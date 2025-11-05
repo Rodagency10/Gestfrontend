@@ -189,7 +189,7 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Ventes du jour"
-            value={`${stats.totalSales.value.toLocaleString()} €`}
+            value={`${stats.totalSales.value.toLocaleString()} FCFA`}
             change={stats.totalSales.change}
             trend={stats.totalSales.trend}
             icon={CurrencyDollarIcon}
@@ -213,7 +213,7 @@ const AdminDashboard = () => {
           />
           <StatCard
             title="Achats du mois"
-            value={`${stats.totalPurchases.value.toLocaleString()} €`}
+            value={`${stats.totalPurchases.value.toLocaleString()} FCFA`}
             change={stats.totalPurchases.change}
             trend={stats.totalPurchases.trend}
             icon={TruckIcon}
@@ -263,7 +263,7 @@ const AdminDashboard = () => {
                         }`}
                       >
                         {activity.amount > 0 ? "+" : ""}
-                        {activity.amount.toFixed(2)} €
+                        {activity.amount.toFixed(2)} FCFA
                       </span>
                     )}
                   </div>
@@ -326,7 +326,7 @@ const AdminDashboard = () => {
                     {product.name}
                   </div>
                   <div className="text-sm text-green-600">
-                    {product.revenue} € CA
+                    {product.revenue} FCFA CA
                   </div>
                 </div>
               ))}

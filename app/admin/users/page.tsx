@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
+import useCashiers, { Cashier, CashierSession } from "../../hooks/useCashiers";
 import {
   PlusIcon,
   PencilIcon,
@@ -14,626 +15,315 @@ import {
   ClockIcon,
 } from "@heroicons/react/24/outline";
 
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: "Administrateur" | "Caissier";
-  status: "active" | "inactive" | "suspended";
-  lastLogin?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ActivityLog {
-  id: number;
-  userId: number;
-  username: string;
-  action: string;
-  details: string;
-  timestamp: string;
-  ipAddress?: string;
-}
-
 const UsersPage = () => {
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: 1,
-      username: "admin",
-      email: "admin@geststore.com",
-      firstName: "Super",
-      lastName: "Administrateur",
-      role: "Administrateur",
-      status: "active",
-      lastLogin: "2024-01-20T10:30:00",
-      createdAt: "2024-01-01T00:00:00",
-      updatedAt: "2024-01-20T10:30:00",
-    },
-    {
-      id: 2,
-      username: "marie.dupont",
-      email: "marie.dupont@geststore.com",
-      firstName: "Marie",
-      lastName: "Dupont",
-      role: "Caissier",
-      status: "active",
-      lastLogin: "2024-01-19T14:15:00",
-      createdAt: "2024-01-15T09:00:00",
-      updatedAt: "2024-01-19T14:15:00",
-    },
-    {
-      id: 3,
-      username: "jean.martin",
-      email: "jean.martin@geststore.com",
-      firstName: "Jean",
-      lastName: "Martin",
-      role: "Caissier",
-      status: "inactive",
-      lastLogin: "2024-01-10T16:45:00",
-      createdAt: "2024-01-10T08:30:00",
-      updatedAt: "2024-01-18T12:00:00",
-    },
-  ]);
-
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([
-    {
-      id: 1,
-      userId: 1,
-      username: "admin",
-      action: "LOGIN",
-      details: "Connexion réussie",
-      timestamp: "2024-01-20T10:30:00",
-      ipAddress: "192.168.1.100",
-    },
-    {
-      id: 2,
-      userId: 2,
-      username: "marie.dupont",
-      action: "SALE",
-      details: "Vente de 25.00€ - 5 articles",
-      timestamp: "2024-01-20T09:15:00",
-      ipAddress: "192.168.1.101",
-    },
-    {
-      id: 3,
-      userId: 1,
-      username: "admin",
-      action: "PRODUCT_ADD",
-      details: "Ajout du produit: Coca-Cola 33cl",
-      timestamp: "2024-01-19T16:20:00",
-      ipAddress: "192.168.1.100",
-    },
-    {
-      id: 4,
-      userId: 2,
-      username: "marie.dupont",
-      action: "LOGIN",
-      details: "Connexion réussie",
-      timestamp: "2024-01-19T14:15:00",
-      ipAddress: "192.168.1.101",
-    },
-    {
-      id: 5,
-      userId: 3,
-      username: "jean.martin",
-      action: "LOGOUT",
-      details: "Déconnexion",
-      timestamp: "2024-01-10T17:00:00",
-      ipAddress: "192.168.1.102",
-    },
-  ]);
+  const {
+    cashiers,
+    sessions,
+    loading,
+    error,
+    getCashiers,
+    createCashier,
+    enableCashier,
+    disableCashier,
+    getAllSessions,
+  } = useCashiers();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showModal, setShowModal] = useState(false);
-  const [showLogsModal, setShowLogsModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "logs">("users");
+  const [editingCashier, setEditingCashier] = useState<Cashier | null>(null);
   const [formData, setFormData] = useState({
     username: "",
-    email: "",
-    firstName: "",
-    lastName: "",
-    role: "Caissier" as "Administrateur" | "Caissier",
-    status: "active" as "active" | "inactive" | "suspended",
     password: "",
-    confirmPassword: "",
   });
+  const [selectedCashier, setSelectedCashier] = useState<Cashier | null>(null);
 
-  // Filtrage des utilisateurs
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${user.firstName} ${user.lastName}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+  // Charger les caissiers et sessions au montage du composant
+  useEffect(() => {
+    getCashiers();
+    getAllSessions();
+  }, []);
+
+  // Filtrage des caissiers
+  const filteredCashiers = cashiers.filter((cashier) => {
+    const matchesSearch = cashier.username
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
     const matchesStatus =
-      statusFilter === "all" || user.status === statusFilter;
+      statusFilter === "all" ||
+      (statusFilter === "active" && cashier.is_active) ||
+      (statusFilter === "inactive" && !cashier.is_active);
 
-    return matchesSearch && matchesRole && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
 
-  // Filtrage des logs pour l'utilisateur sélectionné
-  const filteredLogs = selectedUser
-    ? activityLogs.filter((log) => log.userId === selectedUser.id)
-    : activityLogs;
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (formData.password !== formData.confirmPassword) {
-      alert("Les mots de passe ne correspondent pas");
-      return;
+    try {
+      await createCashier(formData.username, formData.password);
+      resetForm();
+    } catch (err) {
+      console.error("Erreur lors de la création du caissier:", err);
     }
+  };
 
-    const userData = {
-      username: formData.username,
-      email: formData.email,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      role: formData.role,
-      status: formData.status,
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (editingUser) {
-      // Modifier utilisateur existant
-      setUsers(
-        users.map((u) =>
-          u.id === editingUser.id ? { ...editingUser, ...userData } : u,
-        ),
-      );
-    } else {
-      // Ajouter nouvel utilisateur
-      const newUser: User = {
-        id: Math.max(...users.map((u) => u.id)) + 1,
-        ...userData,
-        createdAt: new Date().toISOString(),
-      };
-      setUsers([...users, newUser]);
+  const handleToggleStatus = async (cashier: Cashier) => {
+    try {
+      if (cashier.is_active) {
+        await disableCashier(cashier.cashier_id);
+      } else {
+        await enableCashier(cashier.cashier_id);
+      }
+    } catch (err) {
+      console.error("Erreur lors du changement de statut:", err);
     }
-
-    resetForm();
   };
 
   const resetForm = () => {
     setFormData({
       username: "",
-      email: "",
-      firstName: "",
-      lastName: "",
-      role: "Caissier",
-      status: "active",
       password: "",
-      confirmPassword: "",
     });
-    setEditingUser(null);
+    setEditingCashier(null);
     setShowModal(false);
   };
 
-  const handleEdit = (user: User) => {
+  const openAddModal = () => {
+    setEditingCashier(null);
     setFormData({
-      username: user.username,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      status: user.status,
+      username: "",
       password: "",
-      confirmPassword: "",
     });
-    setEditingUser(user);
     setShowModal(true);
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur ?")) {
-      setUsers(users.filter((u) => u.id !== id));
-    }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
-  const handleViewLogs = (user: User) => {
-    setSelectedUser(user);
-    setShowLogsModal(true);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "inactive":
-        return "bg-gray-100 text-gray-800";
-      case "suspended":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case "Administrateur":
-        return "bg-purple-100 text-purple-800";
-      case "Caissier":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getActionIcon = (action: string) => {
-    switch (action) {
-      case "LOGIN":
-        return <UserIcon className="w-4 h-4 text-green-500" />;
-      case "LOGOUT":
-        return <LockClosedIcon className="w-4 h-4 text-gray-500" />;
-      case "SALE":
-        return <span className="w-4 h-4 text-blue-500">💰</span>;
-      case "PRODUCT_ADD":
-        return <PlusIcon className="w-4 h-4 text-green-500" />;
-      default:
-        return <ClockIcon className="w-4 h-4 text-gray-500" />;
-    }
-  };
-
-  const getActionLabel = (action: string) => {
-    switch (action) {
-      case "LOGIN":
-        return "Connexion";
-      case "LOGOUT":
-        return "Déconnexion";
-      case "SALE":
-        return "Vente";
-      case "PRODUCT_ADD":
-        return "Ajout produit";
-      case "PRODUCT_EDIT":
-        return "Modification produit";
-      case "PRODUCT_DELETE":
-        return "Suppression produit";
-      case "PURCHASE_ADD":
-        return "Nouvel achat";
-      default:
-        return action;
-    }
-  };
+  const totalCashiers = cashiers.length;
+  const activeCashiers = cashiers.filter((c) => c.is_active).length;
+  const inactiveCashiers = cashiers.filter((c) => !c.is_active).length;
 
   return (
     <AdminLayout>
       <div className="p-6">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Gestion des Utilisateurs
-              </h1>
-              <p className="text-gray-600">
-                Gérez les accès et surveillez l&apos;activité
-              </p>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Gestion des Caissiers
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Gérez les comptes des caissiers et consultez leurs sessions
+          </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Caissiers
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {totalCashiers}
+                </p>
+              </div>
+              <div className="p-3 rounded-full bg-blue-500">
+                <UserIcon className="w-6 h-6 text-white" />
+              </div>
             </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-            >
-              <PlusIcon className="w-5 h-5" />
-              <span>Nouvel Utilisateur</span>
-            </button>
           </div>
 
-          {/* Onglets */}
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8">
-              <button
-                onClick={() => setActiveTab("users")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "users"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Utilisateurs ({users.length})
-              </button>
-              <button
-                onClick={() => setActiveTab("logs")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "logs"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Journal d&apos;activité ({activityLogs.length})
-              </button>
-            </nav>
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  Caissiers Actifs
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {activeCashiers}
+                </p>
+              </div>
+              <div className="p-3 rounded-full bg-green-500">
+                <ShieldCheckIcon className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  Caissiers Inactifs
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {inactiveCashiers}
+                </p>
+              </div>
+              <div className="p-3 rounded-full bg-red-500">
+                <LockClosedIcon className="w-6 h-6 text-white" />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Contenu des onglets */}
-        {activeTab === "users" && (
-          <>
-            {/* Filtres et recherche */}
-            <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="relative">
-                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Rechercher un utilisateur..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                  />
+        {/* Filters and Search */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <div className="flex flex-col md:flex-row gap-4 flex-1">
+              {/* Search */}
+              <div className="relative flex-1 md:max-w-md">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
                 </div>
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                >
-                  <option value="all">Tous les rôles</option>
-                  <option value="Administrateur">Administrateur</option>
-                  <option value="Caissier">Caissier</option>
-                </select>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                >
-                  <option value="all">Tous les statuts</option>
-                  <option value="active">Actif</option>
-                  <option value="inactive">Inactif</option>
-                  <option value="suspended">Suspendu</option>
-                </select>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <UserIcon className="w-4 h-4" />
-                  <span>{filteredUsers.length} utilisateur(s) trouvé(s)</span>
-                </div>
+                <input
+                  type="text"
+                  placeholder="Rechercher un caissier..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
               </div>
+
+              {/* Status Filter */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-black"
+              >
+                <option value="all">Tous les statuts</option>
+                <option value="active">Actif</option>
+                <option value="inactive">Inactif</option>
+              </select>
             </div>
 
-            {/* Table des utilisateurs */}
-            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Utilisateur
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Rôle
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Statut
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Dernière connexion
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date création
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="h-10 w-10 flex-shrink-0">
-                              <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                <span className="text-sm font-medium text-gray-700">
-                                  {user.firstName.charAt(0)}
-                                  {user.lastName.charAt(0)}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {user.firstName} {user.lastName}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {user.username} • {user.email}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}
-                          >
-                            <ShieldCheckIcon className="w-3 h-3 mr-1" />
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(user.status)}`}
-                          >
-                            {user.status === "active" && "Actif"}
-                            {user.status === "inactive" && "Inactif"}
-                            {user.status === "suspended" && "Suspendu"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.lastLogin ? (
-                            <div>
-                              <div>
-                                {new Date(user.lastLogin).toLocaleDateString()}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {new Date(user.lastLogin).toLocaleTimeString()}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">
-                              Jamais connecté
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleViewLogs(user)}
-                              className="text-gray-600 hover:text-gray-900"
-                              title="Voir l'activité"
-                            >
-                              <EyeIcon className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleEdit(user)}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="Modifier"
-                            >
-                              <PencilIcon className="w-4 h-4" />
-                            </button>
-                            {user.id !== 1 && ( // Empêcher la suppression du super admin
-                              <button
-                                onClick={() => handleDelete(user.id)}
-                                className="text-red-600 hover:text-red-900"
-                                title="Supprimer"
-                              >
-                                <TrashIcon className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
+            {/* Add Button */}
+            <button
+              onClick={openAddModal}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Ajouter un caissier
+            </button>
+          </div>
+        </div>
 
-        {activeTab === "logs" && (
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6 border-b">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Journal d&apos;Activité Global
-              </h2>
-              <p className="text-sm text-gray-600">
-                Historique de toutes les actions des utilisateurs
-              </p>
+        {/* Cashiers Table */}
+        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3 m-4">
+              <p className="text-sm text-red-700">{error}</p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nom d'utilisateur
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Statut
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date de création
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Utilisateur
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Action
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Détails
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date/Heure
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      IP
-                    </th>
+                    <td colSpan={4} className="px-6 py-12 text-center">
+                      <div className="flex justify-center">
+                        <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                      </div>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Chargement des caissiers...
+                      </p>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {activityLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {log.username}
-                        </div>
-                      </td>
+                ) : (
+                  filteredCashiers.map((cashier) => (
+                    <tr
+                      key={cashier.cashier_id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          {getActionIcon(log.action)}
-                          <span className="ml-2 text-sm text-gray-900">
-                            {getActionLabel(log.action)}
-                          </span>
+                          <UserIcon className="w-8 h-8 text-gray-400 mr-3" />
+                          <div className="text-sm font-medium text-gray-900">
+                            {cashier.username}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">
-                          {log.details}
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleToggleStatus(cashier)}
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-pointer hover:opacity-80 ${
+                            cashier.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {cashier.is_active ? "Actif" : "Inactif"}
+                        </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div>
-                          {new Date(log.timestamp).toLocaleDateString()}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(log.timestamp).toLocaleTimeString()}
-                        </div>
+                        {formatDate(cashier.created_at)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {log.ipAddress || "N/A"}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => setSelectedCashier(cashier)}
+                          className="text-blue-600 hover:text-blue-900 flex items-center"
+                        >
+                          <EyeIcon className="w-4 h-4 mr-1" />
+                          Sessions
+                        </button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
 
-        {/* Modal Ajouter/Modifier Utilisateur */}
+          {filteredCashiers.length === 0 && !loading && (
+            <div className="text-center py-12">
+              <UserIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                Aucun caissier trouvé
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Aucun caissier ne correspond à vos critères de recherche.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Ajouter Caissier */}
         {showModal && (
           <div className="fixed inset-0 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white backdrop-blur-none">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  {editingUser
-                    ? "Modifier l'utilisateur"
-                    : "Nouvel utilisateur"}
+                  Ajouter un nouveau caissier
                 </h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Prénom *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.firstName}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            firstName: e.target.value,
-                          })
-                        }
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nom *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.lastName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lastName: e.target.value })
-                        }
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      />
-                    </div>
-                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nom d&apos;utilisateur *
+                      Nom d'utilisateur *
                     </label>
                     <input
                       type="text"
@@ -643,106 +333,26 @@ const UsersPage = () => {
                         setFormData({ ...formData, username: e.target.value })
                       }
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                      placeholder="Ex: marie.dupont"
                     />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
+                      Mot de passe *
                     </label>
                     <input
-                      type="email"
+                      type="password"
                       required
-                      value={formData.email}
+                      value={formData.password}
                       onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
+                        setFormData({ ...formData, password: e.target.value })
                       }
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                      placeholder="Mot de passe"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Rôle *
-                      </label>
-                      <select
-                        required
-                        value={formData.role}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            role: e.target.value as
-                              | "Administrateur"
-                              | "Caissier",
-                          })
-                        }
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      >
-                        <option value="Caissier">Caissier</option>
-                        <option value="Administrateur">Administrateur</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Statut *
-                      </label>
-                      <select
-                        required
-                        value={formData.status}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            status: e.target.value as
-                              | "active"
-                              | "inactive"
-                              | "suspended",
-                          })
-                        }
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      >
-                        <option value="active">Actif</option>
-                        <option value="inactive">Inactif</option>
-                        <option value="suspended">Suspendu</option>
-                      </select>
-                    </div>
-                  </div>
-                  {!editingUser && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Mot de passe *
-                        </label>
-                        <input
-                          type="password"
-                          required={!editingUser}
-                          value={formData.password}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              password: e.target.value,
-                            })
-                          }
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Confirmer le mot de passe *
-                        </label>
-                        <input
-                          type="password"
-                          required={!editingUser}
-                          value={formData.confirmPassword}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              confirmPassword: e.target.value,
-                            })
-                          }
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                        />
-                      </div>
-                    </>
-                  )}
+
                   <div className="flex justify-end space-x-3 pt-4">
                     <button
                       type="button"
@@ -753,9 +363,10 @@ const UsersPage = () => {
                     </button>
                     <button
                       type="submit"
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                      disabled={loading}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {editingUser ? "Modifier" : "Créer"}
+                      {loading ? "..." : "Ajouter"}
                     </button>
                   </div>
                 </form>
@@ -764,66 +375,77 @@ const UsersPage = () => {
           </div>
         )}
 
-        {/* Modal Journal d'activité utilisateur */}
-        {showLogsModal && selectedUser && (
+        {/* Modal Sessions Caissier */}
+        {selectedCashier && (
           <div className="fixed inset-0 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white">
-              <div className="mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Journal d&apos;activité - {selectedUser.firstName}{" "}
-                  {selectedUser.lastName}
+            <div className="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white backdrop-blur-none">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Sessions de {selectedCashier.username}
                 </h3>
-                <p className="text-sm text-gray-600">
-                  Historique des actions de cet utilisateur
-                </p>
+                <button
+                  onClick={() => setSelectedCashier(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </button>
               </div>
-              <div className="max-h-96 overflow-y-auto">
+
+              <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Action
+                        Date de connexion
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Détails
+                        Adresse IP
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date/Heure
+                        Device
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Statut
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredLogs.map((log) => (
-                      <tr key={log.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {getActionIcon(log.action)}
-                            <span className="ml-2 text-sm text-gray-900">
-                              {getActionLabel(log.action)}
+                    {sessions
+                      .filter(
+                        (session) =>
+                          session.cashier_id === selectedCashier.cashier_id,
+                      )
+                      .map((session) => (
+                        <tr key={session.session_id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatDate(session.login_time)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {session.ip_address || "Non renseigné"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {session.device_info || "Non renseigné"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                session.is_active
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {session.is_active ? "Active" : "Fermée"}
                             </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            {log.details}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div>
-                            {new Date(log.timestamp).toLocaleDateString()}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(log.timestamp).toLocaleTimeString()}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
-              <div className="flex justify-end mt-4">
+
+              <div className="flex justify-end mt-6">
                 <button
-                  onClick={() => setShowLogsModal(false)}
+                  onClick={() => setSelectedCashier(null)}
                   className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
                 >
                   Fermer
