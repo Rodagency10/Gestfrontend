@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import useSales, { Sale, SaleItem } from "@/hook/useSales";
+import { generateSaleReceipt } from "@/utils/receiptGenerator";
 import {
   MagnifyingGlassIcon,
   CalendarIcon,
@@ -24,6 +25,9 @@ const SalesPage = () => {
   const [cashierFilter, setCashierFilter] = useState("all");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [selectedSales, setSelectedSales] = useState<string[]>([]);
+  const [showBulkPrintModal, setShowBulkPrintModal] = useState(false);
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [salesStats, setSalesStats] = useState({
     totalSales: 0,
@@ -91,6 +95,70 @@ const SalesPage = () => {
   const handleViewDetails = (sale: Sale) => {
     setSelectedSale(sale);
     setShowDetailModal(true);
+  };
+
+  const handleOpenPrintModal = (sale: Sale) => {
+    setSelectedSale(sale);
+    setShowPrintModal(true);
+  };
+
+  const handlePrintReceipt = (
+    sale: Sale,
+    action: "download" | "print" | "preview" = "print",
+  ) => {
+    try {
+      generateSaleReceipt(sale, action);
+      setShowPrintModal(false);
+    } catch (error) {
+      console.error("Erreur lors de la génération du reçu:", error);
+      alert("Erreur lors de la génération du reçu. Veuillez réessayer.");
+    }
+  };
+
+  const handleBulkPrint = (
+    action: "download" | "print" | "preview" = "download",
+  ) => {
+    const salesToPrint = filteredSales.filter((sale) =>
+      selectedSales.includes(sale.sale_id),
+    );
+    if (salesToPrint.length === 0) {
+      alert("Veuillez sélectionner au moins une vente.");
+      return;
+    }
+
+    try {
+      if (salesToPrint.length === 1) {
+        generateSaleReceipt(salesToPrint[0], action);
+      } else {
+        // Import the multiple receipts function
+        import("@/utils/receiptGenerator").then(
+          ({ generateMultipleReceipts }) => {
+            generateMultipleReceipts(salesToPrint, action);
+          },
+        );
+      }
+      setShowBulkPrintModal(false);
+      setSelectedSales([]);
+    } catch (error) {
+      console.error("Erreur lors de la génération des reçus:", error);
+      alert("Erreur lors de la génération des reçus. Veuillez réessayer.");
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedSales.length === filteredSales.length) {
+      setSelectedSales([]);
+    } else {
+      setSelectedSales(filteredSales.map((sale) => sale.sale_id));
+    }
+  };
+
+  const handleSelectSale = (saleId: string) => {
+    setSelectedSales((prev) =>
+      prev.includes(saleId)
+        ? prev.filter((id) => id !== saleId)
+        : [...prev, saleId],
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -250,6 +318,27 @@ const SalesPage = () => {
                 </option>
               ))}
             </select>
+
+            {selectedSales.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">
+                  {selectedSales.length} sélectionnée(s)
+                </span>
+                <button
+                  onClick={() => setShowBulkPrintModal(true)}
+                  className="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-1 text-sm"
+                >
+                  <PrinterIcon className="w-4 h-4" />
+                  <span>Imprimer sélection</span>
+                </button>
+                <button
+                  onClick={() => setSelectedSales([])}
+                  className="bg-gray-500 text-white px-3 py-2 rounded-md hover:bg-gray-600 text-sm"
+                >
+                  Annuler
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -259,6 +348,17 @@ const SalesPage = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectedSales.length === filteredSales.length &&
+                        filteredSales.length > 0
+                      }
+                      onChange={handleSelectAll}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     ID Vente
                   </th>
@@ -281,7 +381,18 @@ const SalesPage = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredSales.map((sale) => (
-                  <tr key={sale.sale_id} className="hover:bg-gray-50">
+                  <tr
+                    key={sale.sale_id}
+                    className={`hover:bg-gray-50 ${selectedSales.includes(sale.sale_id) ? "bg-blue-50" : ""}`}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedSales.includes(sale.sale_id)}
+                        onChange={() => handleSelectSale(sale.sale_id)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         #{sale.sale_id.slice(0, 8)}
@@ -328,8 +439,9 @@ const SalesPage = () => {
                           <EyeIcon className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => handleOpenPrintModal(sale)}
                           className="text-gray-600 hover:text-gray-900"
-                          title="Imprimer"
+                          title="Imprimer le reçu"
                         >
                           <PrinterIcon className="w-4 h-4" />
                         </button>
@@ -430,9 +542,115 @@ const SalesPage = () => {
                 >
                   Fermer
                 </button>
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-2">
+                <button
+                  onClick={() => handleOpenPrintModal(selectedSale)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-2"
+                >
                   <PrinterIcon className="w-4 h-4" />
-                  <span>Imprimer</span>
+                  <span>Imprimer Reçu</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Options d'impression */}
+        {showPrintModal && selectedSale && (
+          <div className="fixed inset-0 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Options d&apos;impression
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Reçu #{selectedSale.sale_id.slice(0, 8)} -{" "}
+                  {formatPrice(selectedSale.total_amount)}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => handlePrintReceipt(selectedSale, "print")}
+                  className="w-full bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 flex items-center justify-center space-x-2"
+                >
+                  <PrinterIcon className="w-5 h-5" />
+                  <span>Imprimer directement</span>
+                </button>
+
+                <button
+                  onClick={() => handlePrintReceipt(selectedSale, "preview")}
+                  className="w-full bg-orange-600 text-white px-4 py-3 rounded-md hover:bg-orange-700 flex items-center justify-center space-x-2"
+                >
+                  <EyeIcon className="w-5 h-5" />
+                  <span>Aperçu avant impression</span>
+                </button>
+
+                <button
+                  onClick={() => handlePrintReceipt(selectedSale, "download")}
+                  className="w-full bg-green-600 text-white px-4 py-3 rounded-md hover:bg-green-700 flex items-center justify-center space-x-2"
+                >
+                  <DocumentTextIcon className="w-5 h-5" />
+                  <span>Télécharger PDF</span>
+                </button>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setShowPrintModal(false)}
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Impression en lot */}
+        {showBulkPrintModal && (
+          <div className="fixed inset-0 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Impression en lot
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {selectedSales.length} reçu(s) sélectionné(s)
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleBulkPrint("print")}
+                  className="w-full bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 flex items-center justify-center space-x-2"
+                >
+                  <PrinterIcon className="w-5 h-5" />
+                  <span>Imprimer tous les reçus</span>
+                </button>
+
+                <button
+                  onClick={() => handleBulkPrint("preview")}
+                  className="w-full bg-orange-600 text-white px-4 py-3 rounded-md hover:bg-orange-700 flex items-center justify-center space-x-2"
+                >
+                  <EyeIcon className="w-5 h-5" />
+                  <span>Aperçu du document</span>
+                </button>
+
+                <button
+                  onClick={() => handleBulkPrint("download")}
+                  className="w-full bg-green-600 text-white px-4 py-3 rounded-md hover:bg-green-700 flex items-center justify-center space-x-2"
+                >
+                  <DocumentTextIcon className="w-5 h-5" />
+                  <span>Télécharger PDF combiné</span>
+                </button>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setShowBulkPrintModal(false)}
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                >
+                  Annuler
                 </button>
               </div>
             </div>
