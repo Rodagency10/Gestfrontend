@@ -32,6 +32,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       href: "/admin/products",
       icon: ShoppingBagIcon,
     },
+    {
+      name: "Gestion Catégories",
+      href: "/admin/categories",
+      icon: ChartBarIcon,
+    },
     { name: "Gestion Achats", href: "/admin/purchases", icon: TruckIcon },
     { name: "Gestion Ventes", href: "/admin/sales", icon: CurrencyDollarIcon },
     { name: "Gestion Utilisateurs", href: "/admin/users", icon: UsersIcon },
