@@ -16,19 +16,22 @@ interface Product {
   updated_at: string | null;
 }
 
-const categories = [
-  { id: "all", label: "All Menu", icon: "🍽️" },
-  { id: "main", label: "Main Course", icon: "🍖" },
-  { id: "dessert", label: "Dessert", icon: "🍰" },
-  { id: "drinks", label: "Drinks", icon: "🥤" },
-  { id: "asian", label: "Asian", icon: "🍜" },
-  { id: "western", label: "Western", icon: "🍔" },
-];
+const DEFAULT_CATEGORY_ICON = "🍽️";
 
 // Les produits seront récupérés via l'API
 
 const ProductGrid = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [categories, setCategories] = useState<
+    {
+      category_id: string;
+      name: string;
+      type: string;
+      is_active: boolean;
+      created_at: string;
+      updated_at: string | null;
+    }[]
+  >([]);
   const [productQuantities, setProductQuantities] = useState<{
     [key: string]: number;
   }>({});
@@ -40,6 +43,30 @@ const ProductGrid = () => {
       ? localStorage.getItem("cashier_token")
       : null;
   const { products, loading, error, refetch } = useCashierProducts(token);
+
+  // Récupérer les catégories dynamiquement
+  useEffect(() => {
+    const fetchCategories = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7000"}/cashiers/categories`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data.categories || []);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchCategories();
+  }, [token]);
 
   // Enregistrer la fonction refetch dans le CartContext au montage
   useEffect(() => {
@@ -129,21 +156,34 @@ const ProductGrid = () => {
         </div>
       </div>
 
-      {/* Catégories */}
+      {/* Catégories dynamiques */}
       <div className="flex space-x-4 mb-8 overflow-x-auto pb-4">
+        <button
+          key="all"
+          onClick={() => setSelectedCategory("all")}
+          className={`flex items-center px-6 py-3 rounded-full transition-colors whitespace-nowrap border-2 font-semibold shadow
+            ${
+              selectedCategory === "all"
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white hover:bg-blue-100 text-gray-900 border-gray-300"
+            }`}
+        >
+          <span className="mr-3 text-xl">{DEFAULT_CATEGORY_ICON}</span>
+          <span className="text-base">All Menu</span>
+        </button>
         {categories.map((category) => (
           <button
-            key={category.id}
-            onClick={() => setSelectedCategory(category.id)}
-            className={`flex items-center px-4 py-2 rounded-full transition-colors whitespace-nowrap
+            key={category.category_id}
+            onClick={() => setSelectedCategory(category.category_id)}
+            className={`flex items-center px-6 py-3 rounded-full transition-colors whitespace-nowrap border-2 font-semibold shadow
               ${
-                selectedCategory === category.id
-                  ? "bg-blue-600 text-white"
-                  : "bg-white hover:bg-gray-100 text-gray-700"
+                selectedCategory === category.category_id
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white hover:bg-blue-100 text-gray-900 border-gray-300"
               }`}
           >
-            <span className="mr-2">{category.icon}</span>
-            <span>{category.label}</span>
+            <span className="mr-3 text-xl">{DEFAULT_CATEGORY_ICON}</span>
+            <span className="text-base">{category.name}</span>
           </button>
         ))}
       </div>

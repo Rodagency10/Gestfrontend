@@ -67,6 +67,17 @@ const StatCard: React.FC<StatCardProps> = ({
 const AdminDashboard = () => {
   const [timeFilter, setTimeFilter] = useState("today");
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [categories, setCategories] = useState<
+    {
+      category_id: string;
+      name: string;
+      type: string;
+      is_active: boolean;
+      created_at: string;
+      updated_at: string | null;
+    }[]
+  >([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const router = useRouter();
 
   // Contrôle d'accès - vérifier la présence du token admin
@@ -102,6 +113,34 @@ const AdminDashboard = () => {
     totalPurchases: { value: 8750, change: 8.3, trend: "up" },
   };
 
+  // Récupérer les catégories disponibles pour le filtrage
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("admin_token")
+          : null;
+      if (!token) return;
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7000"}/cashiers/categories`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data.categories || []);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchCategories();
+  }, []);
+
   const recentActivities = [
     {
       id: 1,
@@ -109,6 +148,7 @@ const AdminDashboard = () => {
       description: "Vente de Coca-Cola x5",
       amount: 25.0,
       time: "Il y a 5 min",
+      category: "Boissons",
     },
     {
       id: 2,
@@ -116,6 +156,7 @@ const AdminDashboard = () => {
       description: "Achat auprès de Fournisseur ABC",
       amount: -150.0,
       time: "Il y a 1h",
+      category: "Nourriture",
     },
     {
       id: 3,
@@ -123,6 +164,7 @@ const AdminDashboard = () => {
       description: "Nouvel utilisateur: Marie Dupont",
       amount: null,
       time: "Il y a 2h",
+      category: "",
     },
     {
       id: 4,
@@ -130,6 +172,7 @@ const AdminDashboard = () => {
       description: "Vente de Sandwich x3",
       amount: 18.0,
       time: "Il y a 3h",
+      category: "Nourriture",
     },
   ];
 
@@ -140,9 +183,14 @@ const AdminDashboard = () => {
   ];
 
   const topProducts = [
-    { name: "Coca-Cola", sales: 45, revenue: 225 },
-    { name: "Sandwich Jambon", sales: 32, revenue: 192 },
-    { name: "Café", sales: 28, revenue: 84 },
+    { name: "Coca-Cola", sales: 45, revenue: 225, category: "Boissons" },
+    {
+      name: "Sandwich Jambon",
+      sales: 32,
+      revenue: 192,
+      category: "Nourriture",
+    },
+    { name: "Café", sales: 28, revenue: 84, category: "Boissons" },
   ];
 
   if (checkingAuth) {
@@ -181,6 +229,19 @@ const AdminDashboard = () => {
               <option value="week">Cette semaine</option>
               <option value="month">Ce mois</option>
               <option value="year">Cette année</option>
+            </select>
+            {/* Filtre par catégorie */}
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+            >
+              <option value="all">Toutes les catégories</option>
+              {categories.map((cat) => (
+                <option key={cat.category_id} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -232,42 +293,50 @@ const AdminDashboard = () => {
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-center justify-between py-3 border-b last:border-b-0"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          activity.type === "sale"
-                            ? "bg-green-500"
-                            : activity.type === "purchase"
-                              ? "bg-orange-500"
-                              : "bg-blue-500"
-                        }`}
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {activity.description}
-                        </p>
-                        <p className="text-xs text-gray-500">{activity.time}</p>
+                {recentActivities
+                  .filter(
+                    (activity) =>
+                      selectedCategory === "all" ||
+                      activity.category === selectedCategory,
+                  )
+                  .map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-center justify-between py-3 border-b last:border-b-0"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            activity.type === "sale"
+                              ? "bg-green-500"
+                              : activity.type === "purchase"
+                                ? "bg-orange-500"
+                                : "bg-blue-500"
+                          }`}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {activity.description}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {activity.time}
+                          </p>
+                        </div>
                       </div>
+                      {activity.amount && (
+                        <span
+                          className={`text-sm font-medium ${
+                            activity.amount > 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {activity.amount > 0 ? "+" : ""}
+                          {activity.amount.toFixed(2)} FCFA
+                        </span>
+                      )}
                     </div>
-                    {activity.amount && (
-                      <span
-                        className={`text-sm font-medium ${
-                          activity.amount > 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {activity.amount > 0 ? "+" : ""}
-                        {activity.amount.toFixed(2)} FCFA
-                      </span>
-                    )}
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           </div>
@@ -284,24 +353,30 @@ const AdminDashboard = () => {
             </div>
             <div className="p-6">
               <div className="space-y-3">
-                {lowStockProducts.map((product, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {product.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {product.category}
-                      </p>
+                {lowStockProducts
+                  .filter(
+                    (product) =>
+                      selectedCategory === "all" ||
+                      product.category === selectedCategory,
+                  )
+                  .map((product, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {product.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {product.category}
+                        </p>
+                      </div>
+                      <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded">
+                        {product.stock} restant
+                      </span>
                     </div>
-                    <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded">
-                      {product.stock} restant
-                    </span>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           </div>
@@ -316,20 +391,29 @@ const AdminDashboard = () => {
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {topProducts.map((product, index) => (
-                <div key={index} className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {product.sales}
+              {topProducts
+                .filter(
+                  (product) =>
+                    selectedCategory === "all" ||
+                    product.category === selectedCategory,
+                )
+                .map((product, index) => (
+                  <div
+                    key={index}
+                    className="text-center p-4 border rounded-lg"
+                  >
+                    <div className="text-2xl font-bold text-gray-900">
+                      {product.sales}
+                    </div>
+                    <div className="text-sm text-gray-600 mb-1">ventes</div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {product.name}
+                    </div>
+                    <div className="text-sm text-green-600">
+                      {product.revenue} FCFA CA
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600 mb-1">ventes</div>
-                  <div className="text-lg font-semibold text-gray-900">
-                    {product.name}
-                  </div>
-                  <div className="text-sm text-green-600">
-                    {product.revenue} FCFA CA
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         </div>
