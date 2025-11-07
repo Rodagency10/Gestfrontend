@@ -46,97 +46,68 @@ const Receipt: React.FC<ReceiptProps> = ({
   };
 
   const handlePrint = () => {
-    if (receiptRef.current) {
-      const printWindow = window.open("", "_blank");
-      if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Reçu - ${receiptData.receipt_number}</title>
-              <style>
-                body {
-                  font-family: 'Courier New', monospace;
-                  font-size: 12px;
-                  line-height: 1.4;
-                  margin: 0;
-                  padding: 20px;
-                  max-width: 300px;
-                }
-                .receipt-header {
-                  text-align: center;
-                  border-bottom: 2px solid #000;
-                  padding-bottom: 10px;
-                  margin-bottom: 15px;
-                }
-                .receipt-title {
-                  font-size: 16px;
-                  font-weight: bold;
-                  margin-bottom: 5px;
-                }
-                .receipt-info {
-                  margin-bottom: 15px;
-                }
-                .receipt-items {
-                  border-bottom: 1px solid #000;
-                  padding-bottom: 10px;
-                  margin-bottom: 10px;
-                }
-                .item-row {
-                  display: flex;
-                  justify-content: space-between;
-                  margin-bottom: 5px;
-                }
-                .item-details {
-                  display: flex;
-                  justify-content: space-between;
-                  font-size: 10px;
-                  color: #666;
-                  margin-bottom: 8px;
-                }
-                .receipt-totals {
-                  margin-top: 10px;
-                }
-                .total-row {
-                  display: flex;
-                  justify-content: space-between;
-                  margin-bottom: 3px;
-                }
-                .total-final {
-                  font-weight: bold;
-                  font-size: 14px;
-                  border-top: 1px solid #000;
-                  padding-top: 5px;
-                  margin-top: 5px;
-                }
-                .receipt-footer {
-                  text-align: center;
-                  margin-top: 20px;
-                  font-size: 10px;
-                }
-                @media print {
-                  body { margin: 0; padding: 10px; }
-                }
-              </style>
-            </head>
-            <body>
-              ${receiptRef.current.innerHTML}
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
-        printWindow.close();
-      }
-    }
+    // Utiliser jsPDF comme sur l'admin pour un format cohérent
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: [60, 200], // largeur 60mm, hauteur ajustable
+    });
+
+    doc.setFont("courier", "normal");
+    doc.setFontSize(8);
+
+    let y = 10;
+    doc.text("RESTAURANT FASTFOOD", 5, y, { align: "left" });
+    y += 5;
+    doc.text("Système de Gestion", 5, y);
+    y += 5;
+    doc.line(5, y, 55, y);
+    y += 5;
+
+    doc.text(`N° Reçu: ${receiptData.receipt_number}`, 5, y);
+    y += 5;
+    doc.text(`Date: ${formatDate(receiptData.date)}`, 5, y);
+    y += 5;
+    doc.text(`Caissier: ${receiptData.cashier_name}`, 5, y);
+    y += 8;
+
+    doc.text("ARTICLES:", 5, y);
+    y += 5;
+    receiptData.items.forEach((item) => {
+      doc.text(`${item.name}`, 5, y);
+      y += 4;
+      doc.text(
+        `${item.quantity} x ${item.unit_price.toFixed(0)} = ${item.total_price.toFixed(0)} FCFA`,
+        5,
+        y,
+      );
+      y += 5;
+    });
+
+    doc.line(5, y, 55, y);
+    y += 5;
+    doc.text(`Sous-total: ${receiptData.subtotal.toFixed(0)} FCFA`, 5, y);
+    y += 5;
+    doc.text(`TOTAL: ${receiptData.subtotal.toFixed(0)} FCFA`, 5, y);
+    y += 8;
+
+    doc.text("Merci pour votre visite!", 5, y);
+    y += 5;
+    doc.text("Conservez votre reçu", 5, y);
+
+    // Ouvrir le PDF pour impression
+    doc.autoPrint();
+    window.open(doc.output("bloburl"), "_blank");
+
     onPrint();
   };
 
   const handleDownload = () => {
-    // PDF thermique 80mm de large (format ticket)
+    // PDF thermique format ticket plus étroit
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
-      format: [80, 200], // largeur 80mm, hauteur ajustable
+      format: [60, 200], // largeur 60mm, hauteur ajustable
     });
 
     doc.setFont("courier", "normal");
@@ -189,6 +160,10 @@ const Receipt: React.FC<ReceiptProps> = ({
     <>
       <style jsx global>{`
         @media print {
+          @page {
+            size: 80mm auto;
+            margin: 5mm;
+          }
           body * {
             visibility: hidden !important;
           }
@@ -200,11 +175,21 @@ const Receipt: React.FC<ReceiptProps> = ({
             position: absolute !important;
             left: 0;
             top: 0;
-            width: 300px !important;
-            min-width: 300px !important;
-            max-width: 300px !important;
+            width: 70mm !important;
+            min-width: 70mm !important;
+            max-width: 70mm !important;
             margin: 0 !important;
+            padding: 5mm !important;
             font-family: "Courier New", Courier, monospace !important;
+            font-size: 10px !important;
+            line-height: 1.2 !important;
+          }
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 80mm !important;
+            height: auto !important;
           }
         }
       `}</style>
