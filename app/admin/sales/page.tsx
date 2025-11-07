@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import useSales, { Sale, SaleItem } from "@/hook/useSales";
 import { generateSaleReceipt } from "@/utils/receiptGenerator";
+import { generateSalesReport } from "@/utils/reportGenerator";
 import {
   MagnifyingGlassIcon,
   CalendarIcon,
@@ -14,6 +15,7 @@ import {
   UserIcon,
   ChartBarIcon,
   ClockIcon,
+  DocumentChartBarIcon,
 } from "@heroicons/react/24/outline";
 
 const SalesPage = () => {
@@ -23,11 +25,14 @@ const SalesPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
   const [cashierFilter, setCashierFilter] = useState("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [selectedSales, setSelectedSales] = useState<string[]>([]);
   const [showBulkPrintModal, setShowBulkPrintModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [filteredSales, setFilteredSales] = useState<Sale[]>([]);
   const [salesStats, setSalesStats] = useState({
     totalSales: 0,
@@ -64,28 +69,64 @@ const SalesPage = () => {
     // Filtrer par date
     if (dateFilter !== "all") {
       const today = new Date();
-      let filterDate = new Date();
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
 
       switch (dateFilter) {
         case "today":
-          filterDate.setHours(0, 0, 0, 0);
+          startDate = new Date();
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date();
+          endDate.setHours(23, 59, 59, 999);
           break;
         case "week":
-          filterDate.setDate(today.getDate() - 7);
+          startDate = new Date();
+          startDate.setDate(today.getDate() - 7);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date();
+          endDate.setHours(23, 59, 59, 999);
           break;
         case "month":
-          filterDate.setMonth(today.getMonth() - 1);
+          startDate = new Date();
+          startDate.setDate(today.getDate() - 30);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date();
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "this_month":
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "custom":
+          if (customStartDate && customEndDate) {
+            startDate = new Date(customStartDate);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = new Date(customEndDate);
+            endDate.setHours(23, 59, 59, 999);
+          }
           break;
       }
 
-      if (dateFilter !== "all") {
-        filtered = filtered.filter((sale) => new Date(sale.date) >= filterDate);
+      if (startDate && endDate) {
+        filtered = filtered.filter((sale) => {
+          const saleDate = new Date(sale.date);
+          return saleDate >= startDate! && saleDate <= endDate!;
+        });
       }
     }
 
     setFilteredSales(filtered);
     setSalesStats(calculateSalesStats(filtered));
-  }, [sales, searchTerm, dateFilter, cashierFilter, calculateSalesStats]);
+  }, [
+    sales,
+    searchTerm,
+    dateFilter,
+    cashierFilter,
+    customStartDate,
+    customEndDate,
+    calculateSalesStats,
+  ]);
 
   // Obtenir la liste unique des caissiers
   const uniqueCashiers = Array.from(
@@ -102,12 +143,12 @@ const SalesPage = () => {
     setShowPrintModal(true);
   };
 
-  const handlePrintReceipt = (
+  const handlePrintReceipt = async (
     sale: Sale,
     action: "download" | "print" | "preview" = "print",
   ) => {
     try {
-      generateSaleReceipt(sale, action);
+      await generateSaleReceipt(sale, action);
       setShowPrintModal(false);
     } catch (error) {
       console.error("Erreur lors de la génération du reçu:", error);
@@ -115,7 +156,7 @@ const SalesPage = () => {
     }
   };
 
-  const handleBulkPrint = (
+  const handleBulkPrint = async (
     action: "download" | "print" | "preview" = "download",
   ) => {
     const salesToPrint = filteredSales.filter((sale) =>
@@ -128,13 +169,15 @@ const SalesPage = () => {
 
     try {
       if (salesToPrint.length === 1) {
-        generateSaleReceipt(salesToPrint[0], action);
+        await generateSaleReceipt(salesToPrint[0], action);
       } else {
         // Import the multiple receipts function
-        import("@/utils/receiptGenerator").then(
-          ({ generateMultipleReceipts }) => {
-            generateMultipleReceipts(salesToPrint, action);
-          },
+        const { generateMultipleReceipts } = await import(
+          "@/utils/receiptGenerator"
+        );
+        await generateMultipleReceipts(
+          salesToPrint,
+          action === "print" ? "download" : action,
         );
       }
       setShowBulkPrintModal(false);
@@ -142,6 +185,75 @@ const SalesPage = () => {
     } catch (error) {
       console.error("Erreur lors de la génération des reçus:", error);
       alert("Erreur lors de la génération des reçus. Veuillez réessayer.");
+    }
+  };
+
+  const handleGenerateReport = (
+    action: "download" | "print" | "preview" = "download",
+  ) => {
+    let dateRange = "";
+    let filterType = "";
+
+    switch (dateFilter) {
+      case "today":
+        dateRange = new Date().toLocaleDateString("fr-FR");
+        filterType = "Ventes d'aujourd'hui";
+        break;
+      case "week":
+        dateRange = "7 derniers jours";
+        filterType = "Ventes de la semaine";
+        break;
+      case "month":
+        dateRange = "30 derniers jours";
+        filterType = "Ventes du mois";
+        break;
+      case "this_month":
+        dateRange = `Mois de ${new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`;
+        filterType = "Ventes du mois en cours";
+        break;
+      case "custom":
+        if (customStartDate && customEndDate) {
+          dateRange = `Du ${new Date(customStartDate).toLocaleDateString("fr-FR")} au ${new Date(customEndDate).toLocaleDateString("fr-FR")}`;
+          filterType = "Période personnalisée";
+        }
+        break;
+      default:
+        dateRange = "Toutes les ventes";
+        filterType = "Toutes les ventes";
+    }
+
+    if (cashierFilter !== "all") {
+      filterType += ` - Caissier: ${cashierFilter}`;
+    }
+
+    generateSalesReport(
+      filteredSales,
+      {
+        dateRange,
+        filterType,
+      },
+      action,
+    );
+
+    setShowReportModal(false);
+  };
+
+  const getDateRangeText = () => {
+    switch (dateFilter) {
+      case "today":
+        return "Aujourd'hui";
+      case "week":
+        return "7 derniers jours";
+      case "month":
+        return "30 derniers jours";
+      case "this_month":
+        return "Ce mois";
+      case "custom":
+        return customStartDate && customEndDate
+          ? `${customStartDate} - ${customEndDate}`
+          : "Période personnalisée";
+      default:
+        return "Toutes les périodes";
     }
   };
 
@@ -203,6 +315,59 @@ const SalesPage = () => {
                 Consultez et analysez toutes les ventes
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Filtres de date personnalisés */}
+        {dateFilter === "custom" && (
+          <div className="flex items-center space-x-4 mb-6 p-4 bg-blue-50 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">Du:</label>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">Au:</label>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Actions et statistiques */}
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center space-x-4">
+            {/* Bouton génération d'état */}
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center space-x-2"
+              disabled={filteredSales.length === 0}
+            >
+              <DocumentChartBarIcon className="w-5 h-5" />
+              <span>Générer État</span>
+            </button>
+
+            {/* Impression rapide */}
+            <button
+              onClick={() => handleGenerateReport("print")}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-2"
+              disabled={filteredSales.length === 0}
+            >
+              <PrinterIcon className="w-5 h-5" />
+              <span>Imprimer</span>
+            </button>
+          </div>
+
+          <div className="text-sm text-gray-600">
+            Période: {getDateRangeText()} | {filteredSales.length} vente(s)
           </div>
         </div>
 
@@ -302,8 +467,10 @@ const SalesPage = () => {
             >
               <option value="all">Toutes les dates</option>
               <option value="today">Aujourd&apos;hui</option>
-              <option value="week">Cette semaine</option>
-              <option value="month">Ce mois</option>
+              <option value="week">7 derniers jours</option>
+              <option value="month">30 derniers jours</option>
+              <option value="this_month">Ce mois</option>
+              <option value="custom">Période personnalisée</option>
             </select>
 
             <select
@@ -663,6 +830,83 @@ const SalesPage = () => {
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
                 <span>Chargement...</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de génération d'état */}
+        {showReportModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Générer un État de Ventes
+                  </h3>
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-2">
+                    Période sélectionnée: <strong>{getDateRangeText()}</strong>
+                  </p>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Nombre de ventes: <strong>{filteredSales.length}</strong>
+                  </p>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Montant total:{" "}
+                    <strong>
+                      {filteredSales
+                        .reduce(
+                          (sum, sale) => sum + Number(sale.total_amount),
+                          0,
+                        )
+                        .toFixed(0)}{" "}
+                      FCFA
+                    </strong>
+                  </p>
+                </div>
+
+                <div className="flex flex-col space-y-3">
+                  <button
+                    onClick={() => handleGenerateReport("preview")}
+                    className="w-full bg-orange-600 text-white px-4 py-3 rounded-md hover:bg-orange-700 flex items-center justify-center space-x-2"
+                  >
+                    <EyeIcon className="w-5 h-5" />
+                    <span>Aperçu</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleGenerateReport("print")}
+                    className="w-full bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 flex items-center justify-center space-x-2"
+                  >
+                    <PrinterIcon className="w-5 h-5" />
+                    <span>Imprimer</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleGenerateReport("download")}
+                    className="w-full bg-green-600 text-white px-4 py-3 rounded-md hover:bg-green-700 flex items-center justify-center space-x-2"
+                  >
+                    <DocumentTextIcon className="w-5 h-5" />
+                    <span>Télécharger PDF</span>
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
+                  >
+                    Annuler
+                  </button>
+                </div>
               </div>
             </div>
           </div>

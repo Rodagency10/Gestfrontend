@@ -15,8 +15,6 @@ interface ReceiptData {
   date: string;
   cashier_name: string;
   items: ReceiptItem[];
-  subtotal: number;
-  tax_amount: number;
   total_amount: number;
 }
 
@@ -46,54 +44,56 @@ const Receipt: React.FC<ReceiptProps> = ({
   };
 
   const handlePrint = () => {
-    // Utiliser jsPDF comme sur l'admin pour un format cohérent
+    // Utiliser jsPDF avec format 55mm uniformisé
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
-      format: [60, 200], // largeur 60mm, hauteur ajustable
+      format: [55, 200], // largeur 55mm uniformisée
     });
 
     doc.setFont("courier", "normal");
     doc.setFontSize(8);
 
     let y = 10;
-    doc.text("RESTAURANT FASTFOOD", 5, y, { align: "left" });
+    doc.setFont("courier", "bold");
+    doc.text("Restaurant chez Mamoune", 3, y, { align: "left" });
     y += 5;
-    doc.text("Système de Gestion", 5, y);
+    doc.setFont("courier", "normal");
+    doc.text("Tel: 92 70 81 13", 3, y);
     y += 5;
-    doc.line(5, y, 55, y);
+    doc.line(3, y, 52, y);
     y += 5;
 
-    doc.text(`N° Reçu: ${receiptData.receipt_number}`, 5, y);
+    doc.text(`N° Reçu: ${receiptData.receipt_number}`, 3, y);
     y += 5;
-    doc.text(`Date: ${formatDate(receiptData.date)}`, 5, y);
+    doc.text(`Date: ${formatDate(receiptData.date)}`, 3, y);
     y += 5;
-    doc.text(`Caissier: ${receiptData.cashier_name}`, 5, y);
+    doc.text(`Caissier: ${receiptData.cashier_name}`, 3, y);
     y += 8;
 
-    doc.text("ARTICLES:", 5, y);
+    doc.text("ARTICLES:", 3, y);
     y += 5;
     receiptData.items.forEach((item) => {
-      doc.text(`${item.name}`, 5, y);
+      doc.text(`${item.name}`, 3, y);
       y += 4;
       doc.text(
         `${item.quantity} x ${item.unit_price.toFixed(0)} = ${item.total_price.toFixed(0)} FCFA`,
-        5,
+        3,
         y,
       );
       y += 5;
     });
 
-    doc.line(5, y, 55, y);
+    doc.line(3, y, 52, y);
     y += 5;
-    doc.text(`Sous-total: ${receiptData.subtotal.toFixed(0)} FCFA`, 5, y);
-    y += 5;
-    doc.text(`TOTAL: ${receiptData.subtotal.toFixed(0)} FCFA`, 5, y);
+    doc.setFont("courier", "bold");
+    doc.text(`TOTAL: ${receiptData.total_amount.toFixed(0)} FCFA`, 3, y);
     y += 8;
 
-    doc.text("Merci pour votre visite!", 5, y);
+    doc.setFont("courier", "normal");
+    doc.text("Merci pour votre visite!", 3, y);
     y += 5;
-    doc.text("Conservez votre reçu", 5, y);
+    doc.text("Conservez votre reçu", 3, y);
 
     // Ouvrir le PDF pour impression
     doc.autoPrint();
@@ -103,54 +103,56 @@ const Receipt: React.FC<ReceiptProps> = ({
   };
 
   const handleDownload = () => {
-    // PDF thermique format ticket plus étroit
+    // PDF thermique format 55mm uniformisé
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
-      format: [60, 200], // largeur 60mm, hauteur ajustable
+      format: [55, 200], // largeur 55mm uniformisée
     });
 
     doc.setFont("courier", "normal");
     doc.setFontSize(8);
 
     let y = 10;
-    doc.text("RESTAURANT FASTFOOD", 5, y, { align: "left" });
+    doc.setFont("courier", "bold");
+    doc.text("Restaurant chez Mamoune", 3, y, { align: "left" });
     y += 5;
-    doc.text("Système de Gestion", 5, y);
+    doc.setFont("courier", "normal");
+    doc.text("Tel: 92 70 81 13", 3, y);
     y += 5;
-    doc.line(5, y, 75, y);
+    doc.line(3, y, 52, y);
     y += 5;
 
-    doc.text(`N° Reçu: ${receiptData.receipt_number}`, 5, y);
+    doc.text(`N° Reçu: ${receiptData.receipt_number}`, 3, y);
     y += 5;
-    doc.text(`Date: ${formatDate(receiptData.date)}`, 5, y);
+    doc.text(`Date: ${formatDate(receiptData.date)}`, 3, y);
     y += 5;
-    doc.text(`Caissier: ${receiptData.cashier_name}`, 5, y);
+    doc.text(`Caissier: ${receiptData.cashier_name}`, 3, y);
     y += 8;
 
-    doc.text("ARTICLES:", 5, y);
+    doc.text("ARTICLES:", 3, y);
     y += 5;
     receiptData.items.forEach((item) => {
-      doc.text(`${item.name}`, 5, y);
+      doc.text(`${item.name}`, 3, y);
       y += 4;
       doc.text(
         `${item.quantity} x ${item.unit_price.toFixed(0)} = ${item.total_price.toFixed(0)} FCFA`,
-        5,
+        3,
         y,
       );
       y += 5;
     });
 
-    doc.line(5, y, 75, y);
+    doc.line(3, y, 52, y);
     y += 5;
-    doc.text(`Sous-total: ${receiptData.subtotal.toFixed(0)} FCFA`, 5, y);
-    y += 5;
-    doc.text(`TOTAL: ${receiptData.subtotal.toFixed(0)} FCFA`, 5, y);
+    doc.setFont("courier", "bold");
+    doc.text(`TOTAL: ${receiptData.total_amount.toFixed(0)} FCFA`, 3, y);
     y += 8;
 
-    doc.text("Merci pour votre visite!", 5, y);
+    doc.setFont("courier", "normal");
+    doc.text("Merci pour votre visite!", 3, y);
     y += 5;
-    doc.text("Conservez votre reçu", 5, y);
+    doc.text("Conservez votre reçu", 3, y);
 
     doc.save(`recu_${receiptData.receipt_number}.pdf`);
     if (onDownload) onDownload();
@@ -161,8 +163,8 @@ const Receipt: React.FC<ReceiptProps> = ({
       <style jsx global>{`
         @media print {
           @page {
-            size: 80mm auto;
-            margin: 5mm;
+            size: 55mm auto;
+            margin: 3mm;
           }
           body * {
             visibility: hidden !important;
@@ -175,11 +177,11 @@ const Receipt: React.FC<ReceiptProps> = ({
             position: absolute !important;
             left: 0;
             top: 0;
-            width: 70mm !important;
-            min-width: 70mm !important;
-            max-width: 70mm !important;
+            width: 55mm !important;
+            min-width: 55mm !important;
+            max-width: 55mm !important;
             margin: 0 !important;
-            padding: 5mm !important;
+            padding: 3mm !important;
             font-family: "Courier New", Courier, monospace !important;
             font-size: 10px !important;
             line-height: 1.2 !important;
@@ -188,7 +190,7 @@ const Receipt: React.FC<ReceiptProps> = ({
           body {
             margin: 0 !important;
             padding: 0 !important;
-            width: 80mm !important;
+            width: 55mm !important;
             height: auto !important;
           }
         }
@@ -210,10 +212,10 @@ const Receipt: React.FC<ReceiptProps> = ({
 
           <div ref={receiptRef} className="receipt-content">
             <div className="receipt-header">
-              <div className="receipt-title text-black">
-                RESTAURANT FASTFOOD
+              <div className="receipt-title text-black font-bold">
+                Restaurant chez Mamoune
               </div>
-              <div className="text-black">Système de Gestion</div>
+              <div className="text-black">Tel: 92 70 81 13</div>
             </div>
 
             <div className="receipt-info">
@@ -258,16 +260,10 @@ const Receipt: React.FC<ReceiptProps> = ({
             </div>
 
             <div className="receipt-totals">
-              <div className="total-row">
-                <span className="text-black">Sous-total:</span>
-                <span className="text-black">
-                  {receiptData.subtotal.toFixed(0)} FCFA
-                </span>
-              </div>
               <div className="total-row total-final">
                 <span className="text-black font-bold">TOTAL:</span>
                 <span className="text-black font-bold">
-                  {receiptData.subtotal.toFixed(0)} FCFA
+                  {receiptData.total_amount.toFixed(0)} FCFA
                 </span>
               </div>
             </div>

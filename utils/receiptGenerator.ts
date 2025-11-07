@@ -1,47 +1,106 @@
-import jsPDF from 'jspdf';
-import { Sale, SaleItem } from '@/hook/useSales';
+import jsPDF from "jspdf";
+// Import compatible with both admin and cashier sales
+type SaleItem = {
+  sale_item_id?: string;
+  sale_id?: string;
+  product_id: string;
+  quantity: number;
+  unit_price: string | number;
+  total_price: string | number;
+};
+
+type Sale = {
+  sale_id: string;
+  cashier_id?: string;
+  username: string;
+  date: string;
+  total_amount: string | number;
+  items: SaleItem[];
+};
+
+interface Product {
+  product_id: string;
+  name: string;
+  category_id: string;
+  quantity: number;
+  purchase_price: string;
+  sale_price: string;
+  description?: string;
+  supplier?: string;
+}
 
 interface ReceiptConfig {
   storeName: string;
-  storeAddress: string;
   storePhone: string;
-  storeEmail?: string;
-  taxRate: number;
 }
 
 const defaultConfig: ReceiptConfig = {
-  storeName: 'GEST STORE',
-  storeAddress: '123 Main Street, Abidjan, Côte d\'Ivoire',
-  storePhone: 'Tel: +225 XX XX XX XX',
-  storeEmail: 'contact@geststore.com',
-  taxRate: 0.18, // 18% TVA
+  storeName: "Restaurant chez Mamoune",
+  storePhone: "92 70 81 13",
 };
 
 export class ReceiptGenerator {
   private pdf: jsPDF;
   private config: ReceiptConfig;
   private yPosition: number = 20;
-  private pageWidth: number = 80; // mm - typical thermal printer width
-  private margin: number = 5;
+  private pageWidth: number = 55; // mm - format uniformisé à 55mm
+  private margin: number = 3;
+  private products: Product[] = [];
 
   constructor(config: Partial<ReceiptConfig> = {}) {
     this.config = { ...defaultConfig, ...config };
     this.pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
+      orientation: "portrait",
+      unit: "mm",
       format: [this.pageWidth, 200], // Start with estimated height
     });
   }
 
-  private addLine(text: string, fontSize: number = 8, align: 'left' | 'center' | 'right' = 'left') {
+  private async fetchProducts(): Promise<Product[]> {
+    try {
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("admin_token")
+          : null;
+      const baseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7000";
+
+      const response = await fetch(`${baseUrl}/admin/products`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.products || [];
+      }
+      return [];
+    } catch (error) {
+      console.error("Erreur lors de la récupération des produits:", error);
+      return [];
+    }
+  }
+
+  private getProductName(productId: string): string {
+    const product = this.products.find((p) => p.product_id === productId);
+    return product ? product.name : productId.slice(0, 15);
+  }
+
+  private addLine(
+    text: string,
+    fontSize: number = 8,
+    align: "left" | "center" | "right" = "left",
+  ) {
     this.pdf.setFontSize(fontSize);
 
     const textWidth = this.pdf.getTextWidth(text);
     let x = this.margin;
 
-    if (align === 'center') {
+    if (align === "center") {
       x = (this.pageWidth - textWidth) / 2;
-    } else if (align === 'right') {
+    } else if (align === "right") {
       x = this.pageWidth - textWidth - this.margin;
     }
 
@@ -49,10 +108,10 @@ export class ReceiptGenerator {
     this.yPosition += fontSize / 2 + 2;
   }
 
-  private addSeparator(char: string = '-') {
+  private addSeparator(char: string = "-") {
     const separatorWidth = Math.floor((this.pageWidth - 2 * this.margin) / 1.5);
     const separator = char.repeat(separatorWidth);
-    this.addLine(separator, 6, 'center');
+    this.addLine(separator, 6, "center");
   }
 
   private addSpace(height: number = 3) {
@@ -60,47 +119,34 @@ export class ReceiptGenerator {
   }
 
   private formatPrice(price: string | number): string {
-    const numPrice = typeof price === 'string' ? Number(price) : price;
-    return numPrice.toLocaleString('fr-FR') + ' FCFA';
+    const numPrice = typeof price === "string" ? Number(price) : price;
+    return numPrice.toFixed(0) + " FCFA";
   }
 
   private formatDate(dateString: string): string {
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return date.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   }
 
   private addHeader() {
     // Store name with larger font
-    this.pdf.setFont('helvetica', 'bold');
-    this.addLine(this.config.storeName, 14, 'center');
-
-    // Store details
-    this.pdf.setFont('helvetica', 'normal');
-    this.addLine(this.config.storeAddress, 7, 'center');
-    this.addLine(this.config.storePhone, 7, 'center');
-    if (this.config.storeEmail) {
-      this.addLine(this.config.storeEmail, 7, 'center');
-    }
-
-    this.addSeparator('=');
-
-    // Receipt title
-    this.pdf.setFont('helvetica', 'bold');
-    this.addLine('RECU DE VENTE', 10, 'center');
-    this.pdf.setFont('helvetica', 'normal');
-
+    this.pdf.setFont("courier", "bold");
+    this.addLine(this.config.storeName, 10, "center");
+    this.pdf.setFont("courier", "normal");
+    this.addLine(`Tel: ${this.config.storePhone}`, 8, "center");
     this.addSeparator();
   }
 
   private addSaleInfo(sale: Sale) {
+    this.pdf.setFont("courier", "normal");
     // Sale ID
-    this.addLine(`Recu #: ${sale.sale_id.slice(0, 8).toUpperCase()}`, 8);
+    this.addLine(`N° Reçu: ${sale.sale_id.slice(0, 8).toUpperCase()}`, 8);
 
     // Date and time
     this.addLine(`Date: ${this.formatDate(sale.date)}`, 8);
@@ -112,96 +158,49 @@ export class ReceiptGenerator {
   }
 
   private addItems(items: SaleItem[]) {
-    this.pdf.setFont('helvetica', 'bold');
-    this.addLine('ARTICLES:', 9);
-    this.pdf.setFont('helvetica', 'normal');
-
-    let totalQuantity = 0;
+    this.pdf.setFont("courier", "bold");
+    this.addLine("ARTICLES:", 9);
+    this.pdf.setFont("courier", "normal");
 
     items.forEach((item, index) => {
       const quantity = item.quantity;
       const unitPrice = Number(item.unit_price);
       const totalPrice = Number(item.total_price);
 
-      totalQuantity += quantity;
-
-      // Product line with ID (shortened)
-      const productId = item.product_id.slice(0, 8);
-      this.addLine(`${index + 1}. Produit ID: ${productId}`, 7);
-
-      // Quantity and price line
-      const qtyPriceLine = `   ${quantity} x ${this.formatPrice(unitPrice)}`;
-      this.addLine(qtyPriceLine, 7);
-
-      // Total for this item (right aligned)
-      const itemTotal = this.formatPrice(totalPrice);
-      this.addLine(itemTotal, 8, 'right');
-
-      this.addSpace(1);
+      // Product line avec nom du produit
+      this.addLine(`${this.getProductName(item.product_id)}`, 8);
+      this.addLine(
+        `${quantity} x ${this.formatPrice(unitPrice)} = ${this.formatPrice(totalPrice)}`,
+        8,
+      );
+      this.addSpace(2);
     });
-
-    this.addSeparator();
-
-    // Summary
-    this.addLine(`Total Articles: ${items.length}`, 8);
-    this.addLine(`Quantite Totale: ${totalQuantity}`, 8);
 
     this.addSeparator();
   }
 
   private addTotals(sale: Sale) {
-    const totalAmount = Number(sale.total_amount);
-    const taxAmount = totalAmount * this.config.taxRate / (1 + this.config.taxRate);
-    const subtotal = totalAmount - taxAmount;
+    // Total (sans TVA)
+    this.pdf.setFont("courier", "bold");
+    this.addLine(`TOTAL: ${this.formatPrice(Number(sale.total_amount))}`, 10);
+    this.pdf.setFont("courier", "normal");
 
-    // Subtotal
-    this.addLine('SOUS-TOTAL:', 8);
-    this.addLine(this.formatPrice(subtotal.toFixed(2)), 9, 'right');
-
-    // Tax
-    this.addLine(`TVA (${(this.config.taxRate * 100).toFixed(0)}%):`, 8);
-    this.addLine(this.formatPrice(taxAmount.toFixed(2)), 9, 'right');
-
-    this.addSeparator('=');
-
-    // Total
-    this.pdf.setFont('helvetica', 'bold');
-    this.addLine('TOTAL A PAYER:', 10);
-    this.addLine(this.formatPrice(sale.total_amount), 12, 'right');
-    this.pdf.setFont('helvetica', 'normal');
-
-    this.addSeparator('=');
+    this.addSeparator();
   }
 
   private addFooter() {
-    this.addSpace(5);
-
-    // Payment method
-    this.addLine('Mode de paiement: ESPECES', 8, 'center');
-
     this.addSpace(3);
 
     // Thank you message
-    this.pdf.setFont('helvetica', 'bold');
-    this.addLine('MERCI DE VOTRE VISITE!', 9, 'center');
-    this.pdf.setFont('helvetica', 'normal');
-
-    this.addLine('Revenez nous voir bientot!', 7, 'center');
-
-    this.addSpace(5);
-
-    // Barcode placeholder (you could implement actual barcode generation)
-    this.addLine('|||| |||| |||| ||||', 8, 'center');
-    this.addLine('Code: ' + Date.now().toString().slice(-8), 6, 'center');
-
-    this.addSpace(3);
-
-    // Footer info
-    this.addLine('Conservez ce recu', 6, 'center');
-    this.addLine('www.geststore.com', 6, 'center');
+    this.pdf.setFont("courier", "normal");
+    this.addLine("Merci pour votre visite!", 8, "center");
+    this.addLine("Conservez votre reçu", 8, "center");
   }
 
-  public generateReceipt(sale: Sale): void {
+  public async generateReceipt(sale: Sale): Promise<void> {
+    // Fetch products for name resolution
+    this.products = await this.fetchProducts();
+
     // Reset position
     this.yPosition = 15;
 
@@ -215,8 +214,8 @@ export class ReceiptGenerator {
     // Adjust page height to content
     const finalHeight = this.yPosition + 10;
     this.pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
+      orientation: "portrait",
+      unit: "mm",
       format: [this.pageWidth, finalHeight],
     });
 
@@ -237,63 +236,70 @@ export class ReceiptGenerator {
   public print(): void {
     // Open print dialog
     this.pdf.autoPrint();
-    window.open(this.pdf.output('bloburl'), '_blank');
+    window.open(this.pdf.output("bloburl"), "_blank");
   }
 
   public preview(): void {
     // Open PDF in new tab for preview
-    window.open(this.pdf.output('bloburl'), '_blank');
+    window.open(this.pdf.output("bloburl"), "_blank");
   }
 
   public getBlob(): Blob {
-    return this.pdf.output('blob');
+    return this.pdf.output("blob");
   }
 }
 
 // Helper function to generate and download receipt
-export const generateSaleReceipt = (sale: Sale, action: 'download' | 'print' | 'preview' = 'download') => {
+export const generateSaleReceipt = async (
+  sale: Sale,
+  action: "download" | "print" | "preview" = "download",
+) => {
   const generator = new ReceiptGenerator();
-  generator.generateReceipt(sale);
+  await generator.generateReceipt(sale);
 
   switch (action) {
-    case 'download':
+    case "download":
       generator.download(`recu_${sale.sale_id.slice(0, 8)}.pdf`);
       break;
-    case 'print':
+    case "print":
       generator.print();
       break;
-    case 'preview':
+    case "preview":
       generator.preview();
       break;
   }
 };
 
 // Helper function for batch receipt generation
-export const generateMultipleReceipts = (sales: Sale[], action: 'download' | 'preview' = 'download') => {
+export const generateMultipleReceipts = async (
+  sales: Sale[],
+  action: "download" | "preview" = "download",
+) => {
   if (sales.length === 0) return;
 
   if (sales.length === 1) {
-    generateSaleReceipt(sales[0], action);
+    await generateSaleReceipt(sales[0], action);
     return;
   }
 
   // For multiple receipts, create a combined PDF
   const generator = new ReceiptGenerator();
 
-  sales.forEach((sale, index) => {
+  for (let index = 0; index < sales.length; index++) {
+    const sale = sales[index];
     if (index > 0) {
       // Add new page for each receipt after the first
-      generator['pdf'].addPage([generator['pageWidth'], 200]);
-      generator['yPosition'] = 15;
+      generator["pdf"].addPage([generator["pageWidth"], 200]);
+      generator["yPosition"] = 15;
     }
-    generator.generateReceipt(sale);
-  });
+    await generator.generateReceipt(sale);
+  }
 
   switch (action) {
-    case 'download':
+    case "download":
       generator.download(`recus_${sales.length}_ventes.pdf`);
       break;
-    case 'preview':
+    case "preview":
       generator.preview();
       break;
   }

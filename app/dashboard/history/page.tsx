@@ -1,118 +1,24 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import LeftSidebar from "@/components/layout/LeftSidebar";
 import { SidebarProvider } from "@/context/SidebarContext";
-
-// Types pour les données d'historique
-interface HistoryItem {
-  id: string;
-  date: string;
-  time: string;
-  customer: string;
-  items: Array<{
-    name: string;
-    quantity: number;
-    price: number;
-  }>;
-  total: number;
-  paymentMethod: string;
-  status: "completed" | "pending" | "cancelled";
-}
-
-// Données d'exemple pour l'historique
-const mockHistoryData: HistoryItem[] = [
-  {
-    id: "VNT-001",
-    date: "2024-01-15",
-    time: "14:30",
-    customer: "Client A",
-    items: [
-      { name: "Produit 1", quantity: 2, price: 25.0 },
-      { name: "Produit 2", quantity: 1, price: 15.0 },
-    ],
-    total: 65.0,
-    paymentMethod: "Carte",
-    status: "completed",
-  },
-  {
-    id: "VNT-002",
-    date: "2024-01-15",
-    time: "15:45",
-    customer: "Client B",
-    items: [
-      { name: "Produit 3", quantity: 1, price: 30.0 },
-      { name: "Produit 4", quantity: 3, price: 10.0 },
-    ],
-    total: 60.0,
-    paymentMethod: "Espèces",
-    status: "completed",
-  },
-  {
-    id: "VNT-003",
-    date: "2024-01-14",
-    time: "11:20",
-    customer: "Client C",
-    items: [{ name: "Produit 5", quantity: 1, price: 45.0 }],
-    total: 45.0,
-    paymentMethod: "Carte",
-    status: "pending",
-  },
-  {
-    id: "VNT-004",
-    date: "2024-01-14",
-    time: "16:10",
-    customer: "Client D",
-    items: [
-      { name: "Produit 6", quantity: 2, price: 20.0 },
-      { name: "Produit 7", quantity: 1, price: 35.0 },
-    ],
-    total: 75.0,
-    paymentMethod: "Virement",
-    status: "cancelled",
-  },
-  {
-    id: "VNT-005",
-    date: "2024-01-13",
-    time: "09:15",
-    customer: "Client E",
-    items: [{ name: "Produit 8", quantity: 4, price: 12.5 }],
-    total: 50.0,
-    paymentMethod: "Carte",
-    status: "completed",
-  },
-];
+import useCashierSales from "@/app/hooks/useCashierSales";
+import type { Sale, SaleItem } from "@/app/hooks/useCashierSales";
+import { generateSaleReceipt } from "@/utils/receiptGenerator";
 
 const HistoryPage = () => {
-  // Initialisation directe des données mockées
-  const [historyData] = useState<HistoryItem[]>(mockHistoryData);
+  const { sales, loading, error } = useCashierSales();
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
-  const filteredData = historyData.filter((item) => {
-    const statusMatch =
-      selectedStatus === "all" ? true : item.status === selectedStatus;
-    const searchMatch =
-      searchTerm === ""
-        ? true
-        : item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.items.some((product) =>
-            product.name.toLowerCase().includes(searchTerm.toLowerCase()),
-          );
-    const dateMatch = selectedDate === "" ? true : item.date === selectedDate;
-    return statusMatch && searchMatch && dateMatch;
-  });
-
+  // Helper pour le statut (toujours "completed" pour les ventes du caissier)
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
         return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -122,18 +28,47 @@ const HistoryPage = () => {
     switch (status) {
       case "completed":
         return "Terminé";
-      case "pending":
-        return "En attente";
-      case "cancelled":
-        return "Annulé";
       default:
         return status;
     }
   };
 
-  const totalRevenue = filteredData
-    .filter((item) => item.status === "completed")
-    .reduce((sum, item) => sum + item.total, 0);
+  // Filtrage des ventes
+  const filteredData = sales.filter((sale) => {
+    // Statut (toujours completed)
+    const statusMatch =
+      selectedStatus === "all" ? true : selectedStatus === "completed";
+    // Recherche sur l'id, le caissier ou les produits
+    const searchMatch =
+      searchTerm === ""
+        ? true
+        : sale.sale_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          sale.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          sale.items.some((item) =>
+            item.product_id.toLowerCase().includes(searchTerm.toLowerCase()),
+          );
+    // Filtre par date
+    const dateStr = new Date(sale.date).toISOString().slice(0, 10);
+    const dateMatch = selectedDate === "" ? true : dateStr === selectedDate;
+    return statusMatch && searchMatch && dateMatch;
+  });
+
+  const totalRevenue = filteredData.reduce(
+    (sum, sale) => sum + parseFloat(sale.total_amount),
+    0,
+  );
+
+  const handleViewDetails = (sale: Sale) => {
+    setSelectedSale(sale);
+  };
+
+  const handlePrintReceipt = async (sale: Sale) => {
+    try {
+      await generateSaleReceipt(sale, "print");
+    } catch (error) {
+      console.error("Erreur lors de l'impression du reçu:", error);
+    }
+  };
 
   return (
     <SidebarProvider>
@@ -160,7 +95,7 @@ const HistoryPage = () => {
                     Total des ventes
                   </p>
                   <p className="text-lg font-bold text-blue-900">
-                    {totalRevenue.toFixed(2)} €
+                    {totalRevenue.toFixed(2)} FCFA
                   </p>
                 </div>
                 <div className="bg-green-50 px-4 py-2 rounded-lg">
@@ -183,7 +118,7 @@ const HistoryPage = () => {
                 <input
                   type="text"
                   placeholder="Rechercher par ID, client ou produit..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -191,7 +126,7 @@ const HistoryPage = () => {
 
               {/* Filtre par statut */}
               <select
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
               >
@@ -204,7 +139,7 @@ const HistoryPage = () => {
               {/* Filtre par date */}
               <input
                 type="date"
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
               />
@@ -225,7 +160,13 @@ const HistoryPage = () => {
 
           {/* Liste des transactions */}
           <div className="flex-1 overflow-y-auto p-6">
-            {filteredData.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">
+                Chargement...
+              </div>
+            ) : error ? (
+              <div className="text-center py-12 text-red-600">{error}</div>
+            ) : filteredData.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-gray-400 text-6xl mb-4">📋</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -237,9 +178,9 @@ const HistoryPage = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredData.map((item) => (
+                {filteredData.map((sale) => (
                   <div
-                    key={item.id}
+                    key={sale.sale_id}
                     className="bg-white rounded-lg border p-6 hover:shadow-md transition-shadow"
                   >
                     {/* En-tête de la transaction */}
@@ -247,24 +188,23 @@ const HistoryPage = () => {
                       <div>
                         <div className="flex items-center space-x-3">
                           <h3 className="text-lg font-semibold text-gray-900">
-                            #{item.id}
+                            #{sale.sale_id.slice(0, 8)}
                           </h3>
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor("completed")}`}
                           >
-                            {getStatusLabel(item.status)}
+                            {getStatusLabel("completed")}
                           </span>
                         </div>
                         <p className="text-sm text-gray-600 mt-1">
-                          {item.customer} • {item.date} à {item.time}
+                          Caissier: {sale.username} •{" "}
+                          {new Date(sale.date).toLocaleDateString("fr-FR")} à{" "}
+                          {new Date(sale.date).toLocaleTimeString("fr-FR")}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-gray-900">
-                          {item.total.toFixed(2)} €
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {item.paymentMethod}
+                          {parseFloat(sale.total_amount).toFixed(0)} FCFA
                         </p>
                       </div>
                     </div>
@@ -272,19 +212,20 @@ const HistoryPage = () => {
                     {/* Détails des produits */}
                     <div className="border-t pt-4">
                       <h4 className="text-sm font-medium text-gray-700 mb-3">
-                        Produits achetés :
+                        Produits vendus :
                       </h4>
                       <div className="space-y-2">
-                        {item.items.map((product, index) => (
+                        {sale.items.map((item, index) => (
                           <div
-                            key={index}
+                            key={item.sale_item_id}
                             className="flex justify-between items-center text-sm"
                           >
                             <span className="text-gray-900">
-                              {product.name} × {product.quantity}
+                              {item.quantity} ×{" "}
+                              {parseFloat(item.unit_price).toFixed(0)} FCFA
                             </span>
                             <span className="font-medium text-gray-900">
-                              {(product.price * product.quantity).toFixed(2)} €
+                              {parseFloat(item.total_price).toFixed(0)} FCFA
                             </span>
                           </div>
                         ))}
@@ -293,17 +234,18 @@ const HistoryPage = () => {
 
                     {/* Actions */}
                     <div className="flex justify-end space-x-2 mt-4 pt-4 border-t">
-                      <button className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors">
+                      <button
+                        onClick={() => handleViewDetails(sale)}
+                        className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      >
                         Voir détails
                       </button>
-                      <button className="px-3 py-1 text-sm text-green-600 hover:bg-green-50 rounded transition-colors">
+                      <button
+                        onClick={() => handlePrintReceipt(sale)}
+                        className="px-3 py-1 text-sm text-green-600 hover:bg-green-50 rounded transition-colors"
+                      >
                         Imprimer reçu
                       </button>
-                      {item.status === "pending" && (
-                        <button className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition-colors">
-                          Annuler
-                        </button>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -311,6 +253,106 @@ const HistoryPage = () => {
             )}
           </div>
         </div>
+
+        {/* Modal détails de la vente */}
+        {selectedSale && (
+          <div className="fixed inset-0 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Détails de la vente #{selectedSale.sale_id.slice(0, 8)}
+                </h3>
+                <button
+                  onClick={() => setSelectedSale(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-600">Date</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {new Date(selectedSale.date).toLocaleDateString("fr-FR")}{" "}
+                      à{" "}
+                      {new Date(selectedSale.date).toLocaleTimeString("fr-FR")}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-600">
+                      Caissier
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {selectedSale.username}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-600">Total</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {parseFloat(selectedSale.total_amount).toFixed(0)} FCFA
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Produit ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Quantité
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Prix unitaire
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {selectedSale.items.map((item) => (
+                      <tr key={item.sale_item_id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {item.product_id.slice(0, 8)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {item.quantity}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {parseFloat(item.unit_price).toFixed(0)} FCFA
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {parseFloat(item.total_price).toFixed(0)} FCFA
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex justify-end space-x-2 mt-6">
+                <button
+                  onClick={() => handlePrintReceipt(selectedSale)}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+                >
+                  Imprimer reçu
+                </button>
+                <button
+                  onClick={() => setSelectedSale(null)}
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </SidebarProvider>
   );

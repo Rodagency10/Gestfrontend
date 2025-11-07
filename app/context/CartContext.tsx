@@ -22,8 +22,6 @@ interface ReceiptData {
   date: string;
   cashier_name: string;
   items: ReceiptItem[];
-  subtotal: number;
-  tax_amount: number;
   total_amount: number;
 }
 
@@ -156,8 +154,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const downloadReceipt = (receiptData: ReceiptData) => {
     const receiptContent = `
 ========================================
-        RESTAURANT FASTFOOD
-        Système de Gestion
+        Restaurant chez Mamoune
+        Tel: 92 70 81 13
 ========================================
 
 N° Reçu: ${receiptData.receipt_number}
@@ -174,8 +172,6 @@ ${receiptData.items
   )
   .join("")}
 ----------------------------------------
-Sous-total: ${receiptData.subtotal.toFixed(0)} FCFA
-TVA (18%): ${receiptData.tax_amount.toFixed(0)} FCFA
 TOTAL: ${receiptData.total_amount.toFixed(0)} FCFA
 ----------------------------------------
 

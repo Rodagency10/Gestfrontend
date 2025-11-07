@@ -19,8 +19,6 @@ export interface ReceiptData {
   date: string;
   cashier_name: string;
   items: ReceiptItem[];
-  subtotal: number;
-  tax_amount: number;
   total_amount: number;
 }
 
@@ -31,7 +29,6 @@ interface SaleRequest {
 interface SaleResponse {
   sale_id: string;
   total_amount: number;
-  tax_amount: number;
   items: SaleItem[];
   receipt_data: ReceiptData;
   message?: string;
@@ -120,12 +117,6 @@ export default function useSales(): UseSalesResult {
                   unit_price: item.unit_price,
                   total_price: item.quantity * item.unit_price,
                 })),
-                subtotal: items.reduce(
-                  (sum: number, item: SaleItem) =>
-                    sum + item.quantity * item.unit_price,
-                  0,
-                ),
-                tax_amount: 0,
                 total_amount: items.reduce(
                   (sum: number, item: SaleItem) =>
                     sum + item.quantity * item.unit_price,
@@ -142,10 +133,6 @@ export default function useSales(): UseSalesResult {
             "total_amount" in data && typeof data.total_amount === "number"
               ? data.total_amount
               : receiptData.total_amount,
-          tax_amount:
-            "tax_amount" in data && typeof data.tax_amount === "number"
-              ? data.tax_amount
-              : receiptData.tax_amount,
           items: items,
           receipt_data: receiptData,
         };
