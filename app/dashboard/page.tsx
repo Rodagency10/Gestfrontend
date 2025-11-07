@@ -1,12 +1,18 @@
 "use client";
 
 import React from "react";
+import useCashierAuth from "../hooks/useCashierAuth";
 import LeftSidebar from "@/components/layout/LeftSidebar";
 import RightSidebar from "@/components/layout/RightSidebar";
 import ProductGrid from "@/components/menu/ProductGrid";
 import { SidebarProvider } from "@/context/SidebarContext";
 
 const DashboardPage = () => {
+  const { isAuthenticated, loading } = useCashierAuth();
+
+  if (loading) return <div>Chargement...</div>;
+  if (!isAuthenticated) return null; // La redirection est déjà gérée par le hook
+
   return (
     <SidebarProvider>
       <div className="flex h-screen bg-gray-100">

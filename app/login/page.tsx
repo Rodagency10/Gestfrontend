@@ -5,14 +5,15 @@ import Input from "@/components/ui/form/Input";
 import PasswordInput from "@/components/ui/form/PasswordInput";
 import Button from "@/components/ui/form/Button";
 import Image from "next/image";
+import useCashierLogin from "../hooks/useCashierLogin";
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+
+  const { login, loading, error, cashier, token } = useCashierLogin();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -20,33 +21,20 @@ const LoginPage = () => {
       ...prev,
       [name]: value,
     }));
-    // Clear error when user starts typing
-    if (error) setError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const loginSuccess = await login(formData.username, formData.password);
 
-      // Here you would make the actual API call to authenticate
-      console.log("Login attempt:", formData);
-
-      // For now, just simulate success/failure
-      if (formData.username === "admin" && formData.password === "password") {
-        // Redirect to dashboard
+      // Si la connexion réussit, rediriger vers le dashboard
+      if (loginSuccess) {
         window.location.href = "/dashboard";
-      } else {
-        setError("Nom d'utilisateur ou mot de passe incorrect");
       }
-    } catch {
-      setError("Une erreur est survenue. Veuillez réessayer.");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("Erreur lors de la connexion:", err);
     }
   };
 
@@ -91,7 +79,7 @@ const LoginPage = () => {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6 text-black">
                 <Input
                   name="username"
                   type="text"

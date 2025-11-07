@@ -74,7 +74,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   <span className="text-sm font-bold text-white">G</span>
                 </div>
                 <span className="ml-2 text-xl font-bold text-gray-900">
-                  Gest Store Admin
+                  Gest Store
                 </span>
               </div>
               <button
@@ -132,7 +132,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 <span className="text-sm font-bold text-white">G</span>
               </div>
               <span className="ml-2 text-xl font-bold text-gray-900">
-                Gest Store Admin
+                Gest Store
               </span>
             </div>
           </div>
@@ -200,7 +200,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex items-center">
               <h1 className="text-lg font-semibold text-gray-900">
-                Gest Store Admin
+                Gest Store
               </h1>
             </div>
           </div>
