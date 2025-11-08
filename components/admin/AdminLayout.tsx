@@ -45,7 +45,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
     { name: "Gestion Ventes", href: "/admin/sales", icon: CurrencyDollarIcon },
     { name: "Gestion Utilisateurs", href: "/admin/users", icon: UsersIcon },
-    { name: "Rapports", href: "/admin/reports", icon: ChartBarIcon },
   ];
 
   const handleLogout = () => {
