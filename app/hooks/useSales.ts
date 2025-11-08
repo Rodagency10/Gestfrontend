@@ -135,33 +135,55 @@ export default function useSales(): UseSalesResult {
         const saleData = data.sale;
 
         // Créer des données de reçu par défaut si pas fournies par l'API
-        const receiptData: ReceiptData =
-          "receipt_data" in data && data.receipt_data
-            ? data.receipt_data
-            : {
-                receipt_number: saleData.sale_id, // Utiliser le vrai sale_id comme numéro de reçu
-                date: saleData.date || new Date().toISOString(),
-                cashier_name: getCashierName(),
-                items: items.map((item: SaleItem) => ({
-                  name: item.product_name || `Produit ${item.product_id}`,
-                  quantity: item.quantity,
-                  unit_price: item.unit_price,
-                  total_price: item.quantity * item.unit_price,
-                })),
-                total_amount:
-                  parseFloat(saleData.total_amount) ||
-                  items.reduce(
-                    (sum: number, item: SaleItem) =>
-                      sum + item.quantity * item.unit_price,
-                    0,
-                  ),
-              };
+        // Vérification stricte de la structure de receipt_data
+        let receiptData: ReceiptData;
+        if (
+          "receipt_data" in data &&
+          data.receipt_data &&
+          typeof data.receipt_data === "object" &&
+          "receipt_number" in data.receipt_data &&
+          "date" in data.receipt_data &&
+          "cashier_name" in data.receipt_data &&
+          "items" in data.receipt_data &&
+          "total_amount" in data.receipt_data
+        ) {
+          receiptData = data.receipt_data as ReceiptData;
+        } else {
+          receiptData = {
+            receipt_number: saleData.sale_id, // Utiliser le vrai sale_id comme numéro de reçu
+            date: saleData.date || new Date().toISOString(),
+            cashier_name: getCashierName(),
+            items: items.map((item: SaleItem) => ({
+              name: item.product_name || `Produit ${item.product_id}`,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total_price: item.quantity * item.unit_price,
+            })),
+            total_amount:
+              parseFloat(saleData.total_amount) ||
+              items.reduce(
+                (sum: number, item: SaleItem) =>
+                  sum + item.quantity * item.unit_price,
+                0,
+              ),
+          };
+        }
+
+        // Conversion des items API en SaleItem (unit_price string vers number)
+        const mappedItems: SaleItem[] = saleData.items
+          ? saleData.items.map((apiItem) => ({
+              product_id: apiItem.product_id,
+              quantity: apiItem.quantity,
+              unit_price: parseFloat(apiItem.unit_price),
+              // ApiSaleItem n'a pas product_name
+            }))
+          : items;
 
         const saleResponse: SaleResponse = {
           sale_id: saleData.sale_id, // Toujours utiliser le vrai sale_id de l'API
           total_amount:
             parseFloat(saleData.total_amount) || receiptData.total_amount,
-          items: saleData.items || items,
+          items: mappedItems,
           receipt_data: receiptData,
         };
 

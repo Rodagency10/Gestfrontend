@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { UserType } from '../../utils/authService';
+import React, { useState, useEffect } from "react";
+import { UserType } from "../../utils/authService";
 
 interface TokenExpirationAlertProps {
   timeUntilExpiration: number;
@@ -14,25 +14,30 @@ const TokenExpirationAlert: React.FC<TokenExpirationAlertProps> = ({
   timeUntilExpiration,
   userType,
   onExtendSession,
-  onLogout
+  onLogout,
 }) => {
   const [showAlert, setShowAlert] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   // Afficher l'alerte quand il reste moins de 5 minutes (300 secondes)
   useEffect(() => {
-    if (timeUntilExpiration > 0 && timeUntilExpiration <= 300 && !dismissed) {
-      setShowAlert(true);
-    } else {
-      setShowAlert(false);
-      setDismissed(false);
-    }
+    // Différer le setState pour éviter le warning synchrone
+    const timer = requestAnimationFrame(() => {
+      if (timeUntilExpiration > 0 && timeUntilExpiration <= 300 && !dismissed) {
+        setShowAlert(true);
+      } else {
+        setShowAlert(false);
+        setDismissed(false);
+      }
+    });
+
+    return () => cancelAnimationFrame(timer);
   }, [timeUntilExpiration, dismissed]);
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
   const handleDismiss = () => {
@@ -57,20 +62,22 @@ const TokenExpirationAlert: React.FC<TokenExpirationAlertProps> = ({
     return null;
   }
 
-  const userTypeText = userType === 'cashier' ? 'caissier' : 'administrateur';
-  const alertColor = timeUntilExpiration <= 60 ? 'red' : 'yellow';
+  const userTypeText = userType === "cashier" ? "caissier" : "administrateur";
+  const alertColor = timeUntilExpiration <= 60 ? "red" : "yellow";
 
   return (
     <div className="fixed top-4 right-4 z-50 max-w-md">
-      <div className={`rounded-lg shadow-lg p-4 border-l-4 ${
-        alertColor === 'red'
-          ? 'bg-red-50 border-red-500 text-red-800'
-          : 'bg-yellow-50 border-yellow-500 text-yellow-800'
-      }`}>
+      <div
+        className={`rounded-lg shadow-lg p-4 border-l-4 ${
+          alertColor === "red"
+            ? "bg-red-50 border-red-500 text-red-800"
+            : "bg-yellow-50 border-yellow-500 text-yellow-800"
+        }`}
+      >
         <div className="flex items-start">
           <div className="flex-shrink-0">
             <svg
-              className={`h-5 w-5 ${alertColor === 'red' ? 'text-red-400' : 'text-yellow-400'}`}
+              className={`h-5 w-5 ${alertColor === "red" ? "text-red-400" : "text-yellow-400"}`}
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -87,11 +94,13 @@ const TokenExpirationAlert: React.FC<TokenExpirationAlertProps> = ({
             </h3>
             <div className="mt-2 text-sm">
               <p>
-                Votre session expire dans{' '}
-                <span className="font-semibold">{formatTime(timeUntilExpiration)}</span>
+                Votre session expire dans{" "}
+                <span className="font-semibold">
+                  {formatTime(timeUntilExpiration)}
+                </span>
               </p>
               <p className="mt-1 text-xs opacity-75">
-                Vous serez automatiquement déconnecté(e) à l'expiration.
+                Vous serez automatiquement déconnecté(e) à l&apos;expiration.
               </p>
             </div>
             <div className="mt-3 flex space-x-2">
@@ -99,9 +108,9 @@ const TokenExpirationAlert: React.FC<TokenExpirationAlertProps> = ({
                 <button
                   onClick={handleExtendSession}
                   className={`text-xs px-3 py-1 rounded font-medium ${
-                    alertColor === 'red'
-                      ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                      : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                    alertColor === "red"
+                      ? "bg-red-100 text-red-800 hover:bg-red-200"
+                      : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
                   } transition-colors`}
                 >
                   Prolonger la session
@@ -125,9 +134,13 @@ const TokenExpirationAlert: React.FC<TokenExpirationAlertProps> = ({
             <button
               onClick={handleDismiss}
               className={`rounded-md inline-flex ${
-                alertColor === 'red' ? 'text-red-400 hover:text-red-600' : 'text-yellow-400 hover:text-yellow-600'
+                alertColor === "red"
+                  ? "text-red-400 hover:text-red-600"
+                  : "text-yellow-400 hover:text-yellow-600"
               } focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                alertColor === 'red' ? 'focus:ring-red-500' : 'focus:ring-yellow-500'
+                alertColor === "red"
+                  ? "focus:ring-red-500"
+                  : "focus:ring-yellow-500"
               }`}
             >
               <span className="sr-only">Fermer</span>
@@ -147,10 +160,10 @@ const TokenExpirationAlert: React.FC<TokenExpirationAlertProps> = ({
           <div className="w-full bg-gray-200 rounded-full h-1">
             <div
               className={`h-1 rounded-full transition-all duration-1000 ${
-                alertColor === 'red' ? 'bg-red-500' : 'bg-yellow-500'
+                alertColor === "red" ? "bg-red-500" : "bg-yellow-500"
               }`}
               style={{
-                width: `${Math.max(0, Math.min(100, (timeUntilExpiration / 300) * 100))}%`
+                width: `${Math.max(0, Math.min(100, (timeUntilExpiration / 300) * 100))}%`,
               }}
             />
           </div>

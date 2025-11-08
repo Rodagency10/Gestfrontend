@@ -35,7 +35,15 @@ const ProductsPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [showRestockForm, setShowRestockForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    category_id: string;
+    quantity: string;
+    purchase_price: string;
+    sale_price: string;
+    description: string;
+    supplier: string;
+  }>({
     name: "",
     category_id: "",
     quantity: "",
@@ -54,8 +62,10 @@ const ProductsPage = () => {
   // Filtrage des produits
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      (typeof product.name === "string" &&
+        product.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (typeof product.description === "string" &&
+        product.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory =
       categoryFilter === "all" || product.category_id === categoryFilter;
     const matchesStock =
@@ -64,6 +74,13 @@ const ProductsPage = () => {
       (stockFilter === "high" && product.quantity > 10);
 
     return matchesSearch && matchesCategory && matchesStock;
+  });
+
+  // Tri des produits filtrés par date de création décroissante (created_at)
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    const dateA = new Date(a.created_at).getTime();
+    const dateB = new Date(b.created_at).getTime();
+    return dateB - dateA;
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,8 +118,8 @@ const ProductsPage = () => {
       quantity: product.quantity.toString(),
       purchase_price: product.purchase_price.toString(),
       sale_price: product.sale_price.toString(),
-      description: product.description || "",
-      supplier: product.supplier || "",
+      description: String(product.description ?? ""),
+      supplier: String(product.supplier ?? ""),
     });
     setShowModal(true);
   };
@@ -129,8 +146,9 @@ const ProductsPage = () => {
     setFormData({
       name: "",
       category_id: "",
-      price: "",
-      stock: "",
+      quantity: "",
+      purchase_price: "",
+      sale_price: "",
       description: "",
       supplier: "",
     });
@@ -301,11 +319,11 @@ const ProductsPage = () => {
 
         {/* Table des produits */}
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          {error && (
+          {error && typeof error === "string" && error.length > 0 ? (
             <div className="bg-red-50 border border-red-200 rounded-md p-3 m-4">
               <p className="text-sm text-red-700">{error}</p>
             </div>
-          )}
+          ) : null}
 
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -318,7 +336,7 @@ const ProductsPage = () => {
                     Catégorie
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Prix d'achat
+                    Prix d&apos;achat
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Prix de vente
@@ -337,7 +355,7 @@ const ProductsPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <div className="flex justify-center">
                         <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
                       </div>
@@ -346,8 +364,8 @@ const ProductsPage = () => {
                       </p>
                     </td>
                   </tr>
-                ) : (
-                  filteredProducts.map((product) => {
+                ) : sortedProducts.length > 0 ? (
+                  sortedProducts.map((product) => {
                     const stockStatus = getStockStatus(product.quantity);
 
                     return (
@@ -359,11 +377,6 @@ const ProductsPage = () => {
                           <div className="text-sm font-medium text-gray-900">
                             {product.name}
                           </div>
-                          {product.description && (
-                            <div className="text-sm text-gray-500">
-                              {product.description}
-                            </div>
-                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -425,12 +438,24 @@ const ProductsPage = () => {
                       </tr>
                     );
                   })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center">
+                      <EyeIcon className="mx-auto h-12 w-12 text-gray-400" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">
+                        Aucun produit trouvé
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Aucun produit ne correspond à vos critères de recherche.
+                      </p>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          {filteredProducts.length === 0 && !loading && (
+          {sortedProducts.length === 0 && !loading && (
             <div className="text-center py-12">
               <EyeIcon className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -500,7 +525,7 @@ const ProductsPage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Prix d'achat (FCFA) *
+                        Prix d&apos;achat (FCFA) *
                       </label>
                       <input
                         type="number"
@@ -537,7 +562,7 @@ const ProductsPage = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Quantité initiale *
+                      Quantit&eacute; initiale *
                     </label>
                     <input
                       type="number"
@@ -549,35 +574,7 @@ const ProductsPage = () => {
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          description: e.target.value,
-                        })
-                      }
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Fournisseur
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.supplier}
-                      onChange={(e) =>
-                        setFormData({ ...formData, supplier: e.target.value })
-                      }
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-                    />
-                  </div>
+
                   <div className="flex justify-end space-x-3 pt-4">
                     <button
                       type="button"
