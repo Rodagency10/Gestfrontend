@@ -175,6 +175,7 @@ export class ReportGenerator {
 
   private addTopProducts(
     topProducts: { name: string; quantity: number; amount: number }[],
+    products: Product[],
   ) {
     this.checkPageBreak();
     this.addLine("TOP PRODUITS VENDUS", 14, "center", true);
@@ -190,7 +191,11 @@ export class ReportGenerator {
     this.addSeparator(0.3);
 
     topProducts.slice(0, 10).forEach((product) => {
-      const line = `${product.name.padEnd(25)} ${product.quantity.toString().padStart(8)} ${this.formatPrice(product.amount).padStart(12)}`;
+      const prod = products.find((p) => p.product_id === product.name);
+      const productName = prod ? prod.name : product.name;
+      const line = `${productName.padEnd(25)} ${product.quantity
+        .toString()
+        .padStart(8)} ${this.formatPrice(product.amount).padStart(12)}`;
       this.addLine(line, 9);
       this.checkPageBreak();
     });
@@ -411,12 +416,7 @@ export const generateSalesReport = async (
   const stats = generator.calculateStats(sales);
 
   generator.addStatistics(stats);
-  // Remplacer les IDs par les noms dans le top produits
-  const topProductsWithNames = stats.topProducts.map((prod) => ({
-    ...prod,
-    name: products.find((p) => p.product_id === prod.name)?.name || prod.name,
-  }));
-  generator.addTopProducts(topProductsWithNames);
+  generator.addTopProducts(stats.topProducts, products);
   generator.addCashierStats(stats.cashierStats);
   generator.addSalesDetails(sales, products);
 
