@@ -11,6 +11,7 @@ export interface SaleItem {
 
 export interface Sale {
   sale_id: string;
+  receipt_number: string;
   cashier_id: string;
   username: string;
   date: string;
@@ -47,7 +48,7 @@ export default function useCashierSales() {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
         if (!res.ok) {
           setError("Erreur lors de la récupération des ventes");

@@ -11,6 +11,7 @@ type SaleItem = {
 
 type Sale = {
   sale_id: string;
+  receipt_number: string; // Obligatoire pour uniformiser le numéro de reçu
   cashier_id?: string;
   username: string;
   date: string;
@@ -43,7 +44,7 @@ export class ReceiptGenerator {
   private pdf: jsPDF;
   private config: ReceiptConfig;
   private yPosition: number = 20;
-  private pageWidth: number = 55; // mm - format uniformisé à 55mm
+  private pageWidth: number = 80; // mm - format uniformisé à 80mm
   private margin: number = 3;
   private products: Product[] = [];
 
@@ -143,10 +144,10 @@ export class ReceiptGenerator {
     this.addSeparator();
   }
 
-  private addSaleInfo(sale: Sale) {
+  private addSaleInfo(sale: Sale & { receipt_number?: string }) {
     this.pdf.setFont("courier", "normal");
-    // Sale ID
-    this.addLine(`N° Reçu: ${sale.sale_id.slice(0, 8).toUpperCase()}`, 8);
+    const receiptNum = sale.sale_id;
+    this.addLine(`N° Reçu: ${receiptNum}`, 8);
 
     // Date and time
     this.addLine(`Date: ${this.formatDate(sale.date)}`, 8);
@@ -228,9 +229,8 @@ export class ReceiptGenerator {
     this.addFooter();
   }
 
-  public download(filename?: string): void {
-    const defaultFilename = `recu_${Date.now()}.pdf`;
-    this.pdf.save(filename || defaultFilename);
+  public download(filename: string): void {
+    this.pdf.save(filename);
   }
 
   public print(): void {
@@ -259,7 +259,7 @@ export const generateSaleReceipt = async (
 
   switch (action) {
     case "download":
-      generator.download(`recu_${sale.sale_id.slice(0, 8)}.pdf`);
+      generator.download(`recu_${sale.sale_id}.pdf`);
       break;
     case "print":
       generator.print();

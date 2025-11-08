@@ -4,15 +4,33 @@ import React, { useState } from "react";
 import { useSidebar } from "@/context/SidebarContext";
 import { useCart } from "../../app/context/CartContext";
 import useSales, { ReceiptData } from "../../app/hooks/useSales";
-import Receipt from "../../app/components/receipt/Receipt";
+import { generateSaleReceipt } from "@/utils/receiptGenerator";
+import {
+  XMarkIcon,
+  PrinterIcon,
+  ArrowDownTrayIcon,
+  EyeIcon,
+} from "@heroicons/react/24/outline";
 
 const RightSidebar = () => {
   const { cartItems, updateQuantity, getTotalPrice, getTotalItems, clearCart } =
     useCart();
   const { isRightSidebarOpen, toggleRightSidebar } = useSidebar();
   const { createSale, loading: saleLoading, error: saleError } = useSales();
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [lastSale, setLastSale] = useState<{
+    sale_id: string;
+    username: string;
+    date: string;
+    total_amount: number;
+    receipt_number: string;
+    items: Array<{
+      product_id: string;
+      quantity: number;
+      unit_price: number;
+      total_price: number;
+    }>;
+  } | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   const total = getTotalPrice();
 
@@ -28,26 +46,44 @@ const RightSidebar = () => {
 
     const result = await createSale(saleItems);
 
-    if (result && result.receipt_data) {
-      setReceiptData(result.receipt_data);
-      setShowReceipt(true);
+    if (result && result.sale_id) {
+      // Adapter les données au format attendu par le générateur de reçus
+      const saleData = {
+        sale_id: result.sale_id,
+        username: result.receipt_data?.cashier_name || "Caissier",
+        date: result.receipt_data?.date || new Date().toISOString(),
+        total_amount: result.receipt_data?.total_amount || result.total_amount,
+        receipt_number: result.sale_id, // Utiliser le vrai sale_id de l'API comme numéro de reçu
+        items:
+          result.receipt_data?.items.map((item) => ({
+            product_id: item.name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price,
+          })) || [],
+      };
+      setLastSale(saleData);
+      setShowReceiptModal(true); // Afficher le popup après la vente
       clearCart(); // Vider le panier après la vente
     }
   };
 
-  const handleCloseReceipt = () => {
-    setShowReceipt(false);
-    setReceiptData(null);
+  const handlePreviewReceipt = async () => {
+    if (lastSale) {
+      await generateSaleReceipt(lastSale, "preview");
+    }
   };
 
-  const handlePrintReceipt = () => {
-    // Action après impression (si nécessaire)
-    console.log("Reçu imprimé");
+  const handlePrintLastReceipt = async () => {
+    if (lastSale) {
+      await generateSaleReceipt(lastSale, "print");
+    }
   };
 
-  const handleDownloadReceipt = () => {
-    // Action après téléchargement (si nécessaire)
-    console.log("Reçu téléchargé");
+  const handleDownloadLastReceipt = async () => {
+    if (lastSale) {
+      await generateSaleReceipt(lastSale, "download");
+    }
   };
 
   return (
@@ -171,13 +207,62 @@ const RightSidebar = () => {
         </button>
       </div>
 
-      {showReceipt && receiptData && (
-        <Receipt
-          receiptData={receiptData}
-          onClose={handleCloseReceipt}
-          onPrint={handlePrintReceipt}
-          onDownload={handleDownloadReceipt}
-        />
+      {/* Modal de confirmation après vente */}
+      {showReceiptModal && lastSale && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50">
+          <div className="relative bg-white rounded-lg p-6 w-96 shadow-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">
+                Vente effectuée avec succès
+              </h3>
+              <button
+                onClick={() => setShowReceiptModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <p className="mb-4 text-gray-600">
+              Total: {lastSale.total_amount.toFixed(0)} FCFA
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  handlePreviewReceipt();
+                  setShowReceiptModal(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
+              >
+                <EyeIcon className="h-5 w-5" />
+                Aperçu du reçu
+              </button>
+
+              <button
+                onClick={() => {
+                  handlePrintLastReceipt();
+                  setShowReceiptModal(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700"
+              >
+                <PrinterIcon className="h-5 w-5" />
+                Imprimer le reçu
+              </button>
+
+              <button
+                onClick={() => {
+                  handleDownloadLastReceipt();
+                  setShowReceiptModal(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                Télécharger en PDF
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

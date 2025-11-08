@@ -35,6 +35,7 @@ const ProductGrid = () => {
   const [productQuantities, setProductQuantities] = useState<{
     [key: string]: number;
   }>({});
+  const [searchTerm, setSearchTerm] = useState(""); // Ajout de l'état pour la recherche
   const { addToCart, setRefreshProducts, cartItems } = useCart();
 
   // Récupérer le token du caissier
@@ -61,8 +62,9 @@ const ProductGrid = () => {
           const data = await res.json();
           setCategories(data.categories || []);
         }
-      } catch (e) {
-        // ignore
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Erreur lors de la récupération des catégories:", err);
       }
     };
     fetchCategories();
@@ -122,10 +124,13 @@ const ProductGrid = () => {
     }
   };
 
-  const filteredProducts =
+  const filteredProducts = (
     selectedCategory === "all"
       ? products
-      : products.filter((product) => product.category_id === selectedCategory);
+      : products.filter((product) => product.category_id === selectedCategory)
+  ).filter((product) =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
 
   return (
     <div className="flex-1 h-screen overflow-y-auto bg-gray-50 p-6">
@@ -139,6 +144,8 @@ const ProductGrid = () => {
             type="text"
             placeholder="Search anything..."
             className="w-64 pl-10 pr-4 py-2 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
           <svg
             className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2"
@@ -168,7 +175,6 @@ const ProductGrid = () => {
                 : "bg-white hover:bg-blue-100 text-gray-900 border-gray-300"
             }`}
         >
-          <span className="mr-3 text-xl">{DEFAULT_CATEGORY_ICON}</span>
           <span className="text-base">All Menu</span>
         </button>
         {categories.map((category) => (
@@ -182,7 +188,6 @@ const ProductGrid = () => {
                   : "bg-white hover:bg-blue-100 text-gray-900 border-gray-300"
               }`}
           >
-            <span className="mr-3 text-xl">{DEFAULT_CATEGORY_ICON}</span>
             <span className="text-base">{category.name}</span>
           </button>
         ))}

@@ -34,6 +34,23 @@ interface SaleResponse {
   message?: string;
 }
 
+interface ApiSaleResponse {
+  sale: {
+    sale_id: string;
+    cashier_id: string;
+    date: string;
+    total_amount: string;
+    items: Array<{
+      sale_item_id: string;
+      sale_id: string;
+      product_id: string;
+      quantity: number;
+      unit_price: string;
+      total_price: string;
+    }>;
+  };
+}
+
 interface SaleErrorResponse {
   message: string;
   error?: string;
@@ -89,7 +106,7 @@ export default function useSales(): UseSalesResult {
         body: JSON.stringify(saleData),
       });
 
-      let data: SaleResponse | SaleErrorResponse;
+      let data: ApiSaleResponse | SaleErrorResponse;
       try {
         data = await response.json();
       } catch {
@@ -103,13 +120,26 @@ export default function useSales(): UseSalesResult {
       console.log("Status response:", response.ok);
 
       if (response.ok) {
+        // Vérifier que l'API retourne bien un objet sale avec sale_id
+        if (
+          !("sale" in data) ||
+          !data.sale ||
+          typeof data.sale.sale_id !== "string"
+        ) {
+          setError("L'API n'a pas retourné de sale_id valide");
+          setLoading(false);
+          return null;
+        }
+
+        const saleData = data.sale;
+
         // Créer des données de reçu par défaut si pas fournies par l'API
         const receiptData: ReceiptData =
           "receipt_data" in data && data.receipt_data
             ? data.receipt_data
             : {
-                receipt_number: `REC-${Date.now()}`,
-                date: new Date().toISOString(),
+                receipt_number: saleData.sale_id, // Utiliser le vrai sale_id comme numéro de reçu
+                date: saleData.date || new Date().toISOString(),
                 cashier_name: "Caissier",
                 items: items.map((item: SaleItem) => ({
                   name: item.product_name || `Produit ${item.product_id}`,
@@ -117,23 +147,20 @@ export default function useSales(): UseSalesResult {
                   unit_price: item.unit_price,
                   total_price: item.quantity * item.unit_price,
                 })),
-                total_amount: items.reduce(
-                  (sum: number, item: SaleItem) =>
-                    sum + item.quantity * item.unit_price,
-                  0,
-                ),
+                total_amount:
+                  parseFloat(saleData.total_amount) ||
+                  items.reduce(
+                    (sum: number, item: SaleItem) =>
+                      sum + item.quantity * item.unit_price,
+                    0,
+                  ),
               };
 
         const saleResponse: SaleResponse = {
-          sale_id:
-            "sale_id" in data && typeof data.sale_id === "string"
-              ? data.sale_id
-              : `SALE-${Date.now()}`,
+          sale_id: saleData.sale_id, // Toujours utiliser le vrai sale_id de l'API
           total_amount:
-            "total_amount" in data && typeof data.total_amount === "number"
-              ? data.total_amount
-              : receiptData.total_amount,
-          items: items,
+            parseFloat(saleData.total_amount) || receiptData.total_amount,
+          items: saleData.items || items,
           receipt_data: receiptData,
         };
 

@@ -145,7 +145,7 @@ const AdminDashboard = () => {
               <div className="flex items-center">
                 <div className="w-4 h-4 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mr-2"></div>
                 <span className="text-sm text-blue-700">
-                  Vérification d'accès en cours...
+                  Vérification d&apos;accès en cours...
                 </span>
               </div>
             </div>

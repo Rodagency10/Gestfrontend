@@ -256,7 +256,9 @@ export class ReportGenerator {
           );
           const productName = product
             ? product.name
-            : item.product_id.slice(0, 15);
+            : item.product_id
+              ? item.product_id.slice(0, 15)
+              : "Produit inconnu";
           const itemLine = `  - ${productName} (Qté: ${item.quantity}, Prix: ${this.formatPrice(item.unit_price)})`;
           this.addLine(itemLine, 8);
           this.checkPageBreak();

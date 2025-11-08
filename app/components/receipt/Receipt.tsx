@@ -48,7 +48,7 @@ const Receipt: React.FC<ReceiptProps> = ({
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
-      format: [55, 200], // largeur 55mm uniformisée
+      format: [80, 200], // largeur 80mm uniformisée
     });
 
     doc.setFont("courier", "normal");
@@ -61,7 +61,7 @@ const Receipt: React.FC<ReceiptProps> = ({
     doc.setFont("courier", "normal");
     doc.text("Tel: 92 70 81 13", 3, y);
     y += 5;
-    doc.line(3, y, 52, y);
+    doc.line(3, y, 77, y);
     y += 5;
 
     doc.text(`N° Reçu: ${receiptData.receipt_number}`, 3, y);
@@ -107,7 +107,7 @@ const Receipt: React.FC<ReceiptProps> = ({
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
-      format: [55, 200], // largeur 55mm uniformisée
+      format: [80, 200], // largeur 80mm uniformisée
     });
 
     doc.setFont("courier", "normal");
@@ -120,7 +120,7 @@ const Receipt: React.FC<ReceiptProps> = ({
     doc.setFont("courier", "normal");
     doc.text("Tel: 92 70 81 13", 3, y);
     y += 5;
-    doc.line(3, y, 52, y);
+    doc.line(3, y, 77, y);
     y += 5;
 
     doc.text(`N° Reçu: ${receiptData.receipt_number}`, 3, y);
@@ -163,7 +163,7 @@ const Receipt: React.FC<ReceiptProps> = ({
       <style jsx global>{`
         @media print {
           @page {
-            size: 55mm auto;
+            size: 80mm auto;
             margin: 3mm;
           }
           body * {
@@ -177,9 +177,9 @@ const Receipt: React.FC<ReceiptProps> = ({
             position: absolute !important;
             left: 0;
             top: 0;
-            width: 55mm !important;
-            min-width: 55mm !important;
-            max-width: 55mm !important;
+            width: 80mm !important;
+            min-width: 80mm !important;
+            max-width: 80mm !important;
             margin: 0 !important;
             padding: 3mm !important;
             font-family: "Courier New", Courier, monospace !important;
@@ -190,7 +190,7 @@ const Receipt: React.FC<ReceiptProps> = ({
           body {
             margin: 0 !important;
             padding: 0 !important;
-            width: 55mm !important;
+            width: 80mm !important;
             height: auto !important;
           }
         }
@@ -198,7 +198,7 @@ const Receipt: React.FC<ReceiptProps> = ({
       <div className="fixed inset-0 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
         <div
           id="receipt-print"
-          className="relative top-20 mx-auto p-5 border w-[300px] shadow-lg rounded-md bg-white"
+          className="relative top-20 mx-auto p-5 border w-[400px] shadow-lg rounded-md bg-white"
         >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-black">Reçu de vente</h2>
