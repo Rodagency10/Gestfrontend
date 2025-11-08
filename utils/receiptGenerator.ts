@@ -37,7 +37,7 @@ interface ReceiptConfig {
 
 const defaultConfig: ReceiptConfig = {
   storeName: "Restaurant chez Mamoune",
-  storePhone: "92 70 81 13",
+  storePhone: "99 83 77 77",
 };
 
 export class ReceiptGenerator {

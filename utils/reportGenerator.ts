@@ -383,7 +383,7 @@ export const generateSalesReport = async (
   const defaultConfig: ReportConfig = {
     title: "RAPPORT DE VENTES",
     storeName: "Restaurant chez Mamoune",
-    storePhone: "92 70 81 13",
+    storePhone: "99 83 77 77",
     dateRange: "Non spécifiée",
     filterType: "Toutes les ventes",
   };
