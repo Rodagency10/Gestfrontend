@@ -61,7 +61,7 @@ const Receipt: React.FC<ReceiptProps> = ({
     y += 7;
     doc.setFont("courier", "bold");
     doc.setFontSize(14);
-    doc.text("Tel: 92 70 81 13", 3, y);
+    doc.text("Tel: 99 83 77 77", 3, y);
     y += 6;
     doc.line(3, y, 77, y);
     y += 5;

@@ -42,9 +42,13 @@ const RestockForm: React.FC<RestockFormProps> = ({
     }
   };
 
-  const updateItem = (index: number, field: keyof RestockFormItem, value: string | number) => {
+  const updateItem = (
+    index: number,
+    field: keyof RestockFormItem,
+    value: string | number,
+  ) => {
     const updatedItems = items.map((item, i) =>
-      i === index ? { ...item, [field]: value } : item
+      i === index ? { ...item, [field]: value } : item,
     );
     setItems(updatedItems);
   };
@@ -59,7 +63,7 @@ const RestockForm: React.FC<RestockFormProps> = ({
 
     // Validation
     const validItems = items.filter(
-      (item) => item.product_id && item.quantity > 0
+      (item) => item.product_id && item.quantity > 0,
     );
 
     if (validItems.length === 0) {
@@ -69,11 +73,12 @@ const RestockForm: React.FC<RestockFormProps> = ({
 
     try {
       // Préparer les données pour l'API
-      const restockItems: Omit<RestockItem, 'restock_item_id'>[] = validItems.map((item) => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-        purchase_price: item.purchase_price || undefined,
-      }));
+      const restockItems: Omit<RestockItem, "restock_item_id">[] =
+        validItems.map((item) => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          purchase_price: item.purchase_price || undefined,
+        }));
 
       await createRestock(restockItems);
       onSuccess();
@@ -109,7 +114,7 @@ const RestockForm: React.FC<RestockFormProps> = ({
             <div className="grid grid-cols-12 gap-4 font-medium text-gray-700 text-sm">
               <div className="col-span-5">Produit</div>
               <div className="col-span-2">Quantité</div>
-              <div className="col-span-3">Prix d'achat (FCFA)</div>
+              <div className="col-span-3">Prix d&apos;achat (FCFA)</div>
               <div className="col-span-2">Actions</div>
             </div>
 
@@ -150,7 +155,11 @@ const RestockForm: React.FC<RestockFormProps> = ({
                     min="1"
                     value={item.quantity || ""}
                     onChange={(e) =>
-                      updateItem(index, "quantity", parseInt(e.target.value) || 0)
+                      updateItem(
+                        index,
+                        "quantity",
+                        parseInt(e.target.value) || 0,
+                      )
                     }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                     placeholder="Qté"
@@ -169,7 +178,7 @@ const RestockForm: React.FC<RestockFormProps> = ({
                       updateItem(
                         index,
                         "purchase_price",
-                        parseFloat(e.target.value) || 0
+                        parseFloat(e.target.value) || 0,
                       )
                     }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
@@ -202,16 +211,26 @@ const RestockForm: React.FC<RestockFormProps> = ({
 
           {/* Résumé */}
           <div className="bg-gray-50 p-4 rounded-lg mb-6">
-            <h4 className="font-medium text-gray-900 mb-2">Résumé du restockage</h4>
+            <h4 className="font-medium text-gray-900 mb-2">
+              Résumé du restockage
+            </h4>
             <div className="text-sm text-gray-600">
               <p>
-                Nombre de produits : {items.filter((item) => item.product_id).length}
+                Nombre de produits :{" "}
+                {items.filter((item) => item.product_id).length}
               </p>
               <p>
-                Quantité totale : {items.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                Quantité totale :{" "}
+                {items.reduce((sum, item) => sum + (item.quantity || 0), 0)}
               </p>
               <p>
-                Coût total : {items.reduce((sum, item) => sum + ((item.purchase_price || 0) * (item.quantity || 0)), 0)} FCFA
+                Coût total :{" "}
+                {items.reduce(
+                  (sum, item) =>
+                    sum + (item.purchase_price || 0) * (item.quantity || 0),
+                  0,
+                )}{" "}
+                FCFA
               </p>
             </div>
           </div>
@@ -235,7 +254,9 @@ const RestockForm: React.FC<RestockFormProps> = ({
               ) : (
                 <CheckIcon className="w-4 h-4" />
               )}
-              <span>{loading ? "Traitement..." : "Confirmer le restockage"}</span>
+              <span>
+                {loading ? "Traitement..." : "Confirmer le restockage"}
+              </span>
             </button>
           </div>
         </form>

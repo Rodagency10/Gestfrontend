@@ -37,14 +37,14 @@ interface ReceiptConfig {
 
 const defaultConfig: ReceiptConfig = {
   storeName: "Restaurant chez Mamoune",
-  storePhone: "92 70 81 13",
+  storePhone: "99 83 77 77",
 };
 
 export class ReceiptGenerator {
   private pdf: jsPDF;
   private config: ReceiptConfig;
   private yPosition: number = 20;
-  private pageWidth: number = 80; // mm - format uniformisé à 80mm
+  private pageWidth: number = 80;
   private margin: number = 3;
   private products: Product[] = [];
 
@@ -136,9 +136,8 @@ export class ReceiptGenerator {
   }
 
   private addHeader() {
-    // Store name with larger font
     this.pdf.setFont("courier", "bold");
-    this.addLine(this.config.storeName, 14, "center");
+    this.addLine(this.config.storeName, 13, "center");
     this.pdf.setFont("courier", "bold");
     this.addLine(`Tel: ${this.config.storePhone}`, 14, "center");
     this.addSeparator();
@@ -146,7 +145,7 @@ export class ReceiptGenerator {
 
   private addSaleInfo(sale: Sale & { receipt_number?: string }) {
     this.pdf.setFont("courier", "bold");
-    const receiptNum = sale.sale_id;
+    const receiptNum = sale.sale_id.slice(0, 8);
     this.addLine(`N° Reçu: ${receiptNum}`, 11);
 
     // Date and time

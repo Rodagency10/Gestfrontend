@@ -229,7 +229,7 @@ const UsersPage = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nom d'utilisateur
+                    Nom d&apos;utilisateur
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Statut
@@ -323,7 +323,7 @@ const UsersPage = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nom d'utilisateur *
+                      Nom d&apos;utilisateur *
                     </label>
                     <input
                       type="text"

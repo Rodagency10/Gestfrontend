@@ -116,7 +116,8 @@ const RestockHistoryPage: React.FC = () => {
             Historique des Restockages
           </h1>
           <p className="text-gray-600 mt-2">
-            Consultez l'historique complet de tous les restockages effectués
+            Consultez l&apos;historique complet de tous les restockages
+            effectués
           </p>
         </div>
 
@@ -194,7 +195,7 @@ const RestockHistoryPage: React.FC = () => {
                 className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-black"
               >
                 <option value="all">Toutes les dates</option>
-                <option value="today">Aujourd'hui</option>
+                <option value="today">Aujourd&apos;hui</option>
                 <option value="week">Cette semaine</option>
                 <option value="month">Ce mois</option>
               </select>
@@ -239,7 +240,7 @@ const RestockHistoryPage: React.FC = () => {
                         <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
                       </div>
                       <p className="mt-2 text-sm text-gray-500">
-                        Chargement de l'historique...
+                        Chargement de l&apos;historique...
                       </p>
                     </td>
                   </tr>
@@ -359,7 +360,7 @@ const RestockHistoryPage: React.FC = () => {
                         Quantité
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Prix d'achat
+                        Prix d&apos;achat
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Total

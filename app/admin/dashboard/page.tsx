@@ -21,7 +21,9 @@ const AntiFlashWrapper: React.FC<{ children: React.ReactNode }> = ({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    // Avoid calling setState synchronously in useEffect; use requestAnimationFrame to defer
+    const timer = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(timer);
   }, []);
 
   return (
@@ -95,7 +97,7 @@ const AdminDashboard = () => {
     recentActivities,
     lowStockProducts,
     topProducts,
-    loading: dataLoading,
+    // loading: dataLoading, // Désactivé car non utilisé // dataLoading is not used
     error,
     refetch,
   } = useAdminDashboard(timeFilter);
@@ -244,7 +246,11 @@ const AdminDashboard = () => {
                 <div className="space-y-4">
                   {recentActivities
                     .filter((activity) => activity.type === "sale")
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .sort((a, b) => {
+                      const dateA = new Date(a.time).getTime();
+                      const dateB = new Date(b.time).getTime();
+                      return dateB - dateA;
+                    })
                     .slice(0, 3)
                     .map((activity) => (
                       <div

@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { authService, UserType, TokenPayload } from '../../utils/authService';
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { authService, UserType, TokenPayload } from "../../utils/authService";
 
 interface UseAuthResult {
   isAuthenticated: boolean;
@@ -35,8 +35,8 @@ export function useAuth(userType: UserType): UseAuthResult {
     setTimeUntilExpiration(timeLeft);
 
     // Si non authentifié, rediriger vers la page de login
-    if (!authenticated && typeof window !== 'undefined') {
-      const loginUrl = userType === 'cashier' ? '/login' : '/admin-login-xyz';
+    if (!authenticated && typeof window !== "undefined") {
+      const loginUrl = userType === "cashier" ? "/login" : "/admin-login-xyz";
       router.replace(loginUrl);
     }
   }, [userType, router]);
@@ -50,8 +50,10 @@ export function useAuth(userType: UserType): UseAuthResult {
 
   // Vérification initiale et mise en place des intervalles
   useEffect(() => {
-    // Vérification initiale
-    checkAuthStatus();
+    // Vérification initiale différée pour éviter le setState synchrone
+    const raf = requestAnimationFrame(() => {
+      checkAuthStatus();
+    });
 
     // Vérification périodique toutes les 30 secondes
     const intervalId = setInterval(checkAuthStatus, 30000);
@@ -59,32 +61,40 @@ export function useAuth(userType: UserType): UseAuthResult {
     // Nettoyage à la destruction du composant
     return () => {
       clearInterval(intervalId);
+      cancelAnimationFrame(raf);
     };
   }, [checkAuthStatus]);
 
   // Écouter les changements dans le localStorage
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      const relevantKeys = userType === 'cashier'
-        ? ['cashier_token', 'cashier_data']
-        : ['admin_token', 'admin_data'];
+      const relevantKeys =
+        userType === "cashier"
+          ? ["cashier_token", "cashier_data"]
+          : ["admin_token", "admin_data"];
 
-      if (relevantKeys.includes(e.key || '')) {
+      if (relevantKeys.includes(e.key || "")) {
         checkAuthStatus();
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, [checkAuthStatus, userType]);
 
   // Afficher un avertissement quand le token approche de l'expiration (5 minutes)
   useEffect(() => {
-    if (timeUntilExpiration > 0 && timeUntilExpiration <= 300 && isAuthenticated) {
-      console.warn(`Token ${userType} expire dans ${Math.floor(timeUntilExpiration / 60)} minutes`);
+    if (
+      timeUntilExpiration > 0 &&
+      timeUntilExpiration <= 300 &&
+      isAuthenticated
+    ) {
+      console.warn(
+        `Token ${userType} expire dans ${Math.floor(timeUntilExpiration / 60)} minutes`,
+      );
     }
   }, [timeUntilExpiration, isAuthenticated, userType]);
 
@@ -94,7 +104,7 @@ export function useAuth(userType: UserType): UseAuthResult {
     tokenPayload,
     timeUntilExpiration,
     logout,
-    checkAuthStatus
+    checkAuthStatus,
   };
 }
 
@@ -102,12 +112,12 @@ export function useAuth(userType: UserType): UseAuthResult {
  * Hook spécialisé pour l'authentification des caissiers
  */
 export function useCashierAuth(): UseAuthResult {
-  return useAuth('cashier');
+  return useAuth("cashier");
 }
 
 /**
  * Hook spécialisé pour l'authentification des administrateurs
  */
 export function useAdminAuth(): UseAuthResult {
-  return useAuth('admin');
+  return useAuth("admin");
 }

@@ -3,20 +3,21 @@
  * et les redirections vers les pages de login
  */
 
-import { authService, UserType } from './authService';
+import { authService, UserType } from "./authService";
 
 interface ApiRequestOptions extends RequestInit {
   userType?: UserType;
   skipAuthCheck?: boolean;
 }
 
-interface ApiResponse<T = any> extends Response {
+interface ApiResponse<T = unknown> extends Response {
   data?: T;
 }
 
 class ApiInterceptor {
   private static instance: ApiInterceptor;
-  private readonly BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:7000';
+  private readonly BACKEND_URL =
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7000";
 
   private constructor() {}
 
@@ -33,14 +34,14 @@ class ApiInterceptor {
    * @param options Options de la requête avec type d'utilisateur
    * @returns Promise de la réponse
    */
-  public async request<T = any>(
+  public async request<T = unknown>(
     url: string,
-    options: ApiRequestOptions = {}
+    options: ApiRequestOptions = {},
   ): Promise<ApiResponse<T>> {
     const { userType, skipAuthCheck = false, ...fetchOptions } = options;
 
     // Construire l'URL complète si elle est relative
-    const fullUrl = url.startsWith('http') ? url : `${this.BACKEND_URL}${url}`;
+    const fullUrl = url.startsWith("http") ? url : `${this.BACKEND_URL}${url}`;
 
     // Préparer les headers
     const headers = new Headers(fetchOptions.headers);
@@ -54,42 +55,48 @@ class ApiInterceptor {
         if (!authService.isTokenValid(userType)) {
           console.warn(`Token ${userType} expiré, redirection automatique`);
           authService.logout(userType);
-          throw new Error('Token expiré');
+          throw new Error("Token expiré");
         }
 
-        headers.set('Authorization', `Bearer ${token}`);
+        headers.set("Authorization", `Bearer ${token}`);
       }
     }
 
     // Ajouter le Content-Type par défaut pour les requêtes POST/PUT/PATCH
-    if (['POST', 'PUT', 'PATCH'].includes(fetchOptions.method?.toUpperCase() || 'GET')) {
-      if (!headers.has('Content-Type')) {
-        headers.set('Content-Type', 'application/json');
+    if (
+      ["POST", "PUT", "PATCH"].includes(
+        fetchOptions.method?.toUpperCase() || "GET",
+      )
+    ) {
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
       }
     }
 
     try {
       const response = await fetch(fullUrl, {
         ...fetchOptions,
-        headers
+        headers,
       });
 
       // Vérifier si la réponse indique un token expiré
       if (response.status === 401 && userType && !skipAuthCheck) {
-        console.warn(`Réponse 401 reçue pour ${userType}, token probablement expiré`);
+        console.warn(
+          `Réponse 401 reçue pour ${userType}, token probablement expiré`,
+        );
         authService.logout(userType);
-        throw new Error('Token expiré ou invalide');
+        throw new Error("Token expiré ou invalide");
       }
 
       // Traiter la réponse JSON si possible
       let data: T | undefined;
-      const contentType = response.headers.get('content-type');
+      const contentType = response.headers.get("content-type");
 
-      if (contentType && contentType.includes('application/json')) {
+      if (contentType && contentType.includes("application/json")) {
         try {
           data = await response.json();
         } catch (jsonError) {
-          console.warn('Erreur lors du parsing JSON:', jsonError);
+          console.warn("Erreur lors du parsing JSON:", jsonError);
         }
       }
 
@@ -100,9 +107,9 @@ class ApiInterceptor {
       return apiResponse;
     } catch (error) {
       // Gestion des erreurs réseau
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error('Erreur réseau:', error);
-        throw new Error('Erreur de connexion au serveur');
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        console.error("Erreur réseau:", error);
+        throw new Error("Erreur de connexion au serveur");
       }
 
       throw error;
@@ -113,69 +120,69 @@ class ApiInterceptor {
    * Méthodes de commodité pour les requêtes HTTP courantes
    */
 
-  public async get<T = any>(
+  public async get<T = unknown>(
     url: string,
     userType?: UserType,
-    options: Omit<ApiRequestOptions, 'method' | 'userType'> = {}
+    options: Omit<ApiRequestOptions, "method" | "userType"> = {},
   ): Promise<ApiResponse<T>> {
     return this.request<T>(url, {
       ...options,
-      method: 'GET',
-      userType
+      method: "GET",
+      userType,
     });
   }
 
-  public async post<T = any>(
+  public async post<T = unknown>(
     url: string,
-    data?: any,
+    data?: unknown,
     userType?: UserType,
-    options: Omit<ApiRequestOptions, 'method' | 'body' | 'userType'> = {}
+    options: Omit<ApiRequestOptions, "method" | "body" | "userType"> = {},
   ): Promise<ApiResponse<T>> {
     return this.request<T>(url, {
       ...options,
-      method: 'POST',
+      method: "POST",
       body: data ? JSON.stringify(data) : undefined,
-      userType
+      userType,
     });
   }
 
-  public async put<T = any>(
+  public async put<T = unknown>(
     url: string,
-    data?: any,
+    data?: unknown,
     userType?: UserType,
-    options: Omit<ApiRequestOptions, 'method' | 'body' | 'userType'> = {}
+    options: Omit<ApiRequestOptions, "method" | "body" | "userType"> = {},
   ): Promise<ApiResponse<T>> {
     return this.request<T>(url, {
       ...options,
-      method: 'PUT',
+      method: "PUT",
       body: data ? JSON.stringify(data) : undefined,
-      userType
+      userType,
     });
   }
 
-  public async patch<T = any>(
+  public async patch<T = unknown>(
     url: string,
-    data?: any,
+    data?: unknown,
     userType?: UserType,
-    options: Omit<ApiRequestOptions, 'method' | 'body' | 'userType'> = {}
+    options: Omit<ApiRequestOptions, "method" | "body" | "userType"> = {},
   ): Promise<ApiResponse<T>> {
     return this.request<T>(url, {
       ...options,
-      method: 'PATCH',
+      method: "PATCH",
       body: data ? JSON.stringify(data) : undefined,
-      userType
+      userType,
     });
   }
 
-  public async delete<T = any>(
+  public async delete<T = unknown>(
     url: string,
     userType?: UserType,
-    options: Omit<ApiRequestOptions, 'method' | 'userType'> = {}
+    options: Omit<ApiRequestOptions, "method" | "userType"> = {},
   ): Promise<ApiResponse<T>> {
     return this.request<T>(url, {
       ...options,
-      method: 'DELETE',
-      userType
+      method: "DELETE",
+      userType,
     });
   }
 
@@ -185,9 +192,9 @@ class ApiInterceptor {
    * @returns Token ou null
    */
   private getAuthToken(userType: UserType): string | null {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === "undefined") return null;
 
-    const tokenKey = userType === 'cashier' ? 'cashier_token' : 'admin_token';
+    const tokenKey = userType === "cashier" ? "cashier_token" : "admin_token";
     return localStorage.getItem(tokenKey);
   }
 
@@ -198,13 +205,13 @@ class ApiInterceptor {
    */
   public requiresAuth(url: string): boolean {
     const publicEndpoints = [
-      '/admin/auth/login',
-      '/cashiers/login',
-      '/health',
-      '/ping'
+      "/admin/auth/login",
+      "/cashiers/login",
+      "/health",
+      "/ping",
     ];
 
-    return !publicEndpoints.some(endpoint => url.includes(endpoint));
+    return !publicEndpoints.some((endpoint) => url.includes(endpoint));
   }
 
   /**
@@ -213,14 +220,14 @@ class ApiInterceptor {
    * @param credentials Identifiants de connexion
    * @returns Promise de la réponse
    */
-  public async login<T = any>(
+  public async login<T = unknown>(
     url: string,
-    credentials: { email?: string; username?: string; password: string }
+    credentials: { email?: string; username?: string; password: string },
   ): Promise<ApiResponse<T>> {
     return this.request<T>(url, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(credentials),
-      skipAuthCheck: true
+      skipAuthCheck: true,
     });
   }
 }

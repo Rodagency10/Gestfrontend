@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import useSales, { Sale, SaleItem } from "@/hook/useSales";
+
+// Étend SaleItem pour inclure category_name (optionnel)
+type SaleItemWithCategoryName = SaleItem & { category_name?: string };
 import { generateSaleReceipt } from "@/utils/receiptGenerator";
 import { generateSalesReport } from "@/utils/reportGenerator";
 import {
@@ -181,7 +184,10 @@ const SalesPage = () => {
     // Filtrer par catégorie réelle (Boissons, Nourritures, toutes)
     if (selectedCategory !== "all") {
       filtered = filtered.filter((sale) =>
-        sale.items.some((item) => item.category_name === selectedCategory),
+        sale.items.some(
+          (item: SaleItemWithCategoryName) =>
+            item.category_name === selectedCategory,
+        ),
       );
     }
 
