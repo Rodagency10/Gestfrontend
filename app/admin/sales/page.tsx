@@ -771,17 +771,7 @@ const SalesPage = () => {
                       {selectedSale.items.map((item) => (
                         <tr key={item.sale_item_id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {
-                              // Affiche le nom du produit si trouvé, sinon l'ID
-                              (() => {
-                                const prod = products.find(
-                                  (p) => p.product_id === item.product_id,
-                                );
-                                return prod
-                                  ? prod.name
-                                  : item.product_id.slice(0, 8) + "...";
-                              })()
-                            }
+                            {item.product_name}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {item.quantity}

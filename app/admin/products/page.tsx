@@ -87,6 +87,18 @@ const ProductsPage = () => {
     e.preventDefault();
 
     try {
+      // Vérification unicité produit (nom + catégorie)
+      const isDuplicateProduct = products.some(
+        (p) =>
+          p.name.trim().toLowerCase() === formData.name.trim().toLowerCase() &&
+          p.category_id === formData.category_id &&
+          (!editingProduct || p.product_id !== editingProduct.product_id),
+      );
+      if (isDuplicateProduct) {
+        alert("Un produit avec ce nom existe déjà dans cette catégorie.");
+        return;
+      }
+
       const productData = {
         name: formData.name,
         category_id: formData.category_id,
@@ -426,12 +438,6 @@ const ProductsPage = () => {
                               className="text-blue-600 hover:text-blue-900"
                             >
                               <PencilIcon className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(product.product_id)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              <TrashIcon className="w-4 h-4" />
                             </button>
                           </div>
                         </td>

@@ -63,6 +63,17 @@ const CategoriesPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Vérification unicité catégorie (nom)
+    const isDuplicateCategory = categories.some(
+      (c) =>
+        c.name.trim().toLowerCase() === formData.name.trim().toLowerCase() &&
+        (!editingCategory || c.category_id !== editingCategory.category_id),
+    );
+    if (isDuplicateCategory) {
+      alert("Une catégorie avec ce nom existe déjà.");
+      return;
+    }
+
     try {
       if (editingCategory) {
         // Modification
