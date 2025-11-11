@@ -105,66 +105,99 @@ export class ProductReportGenerator {
     this.addSpace();
   }
 
-  // Affiche les produits dans un vrai tableau PDF
-  private addProductTable(products: ProductReportItem[]) {
-    // Largeurs des colonnes (en mm)
-    const colWidths = [40, 32, 22, 22, 18, 20];
-    const headers = [
-      "Produit",
-      "Catégorie",
-      "Achat",
-      "Vente",
-      "Stock",
-      "Statut",
-    ];
-    const startX = this.margin;
-    let y = this.yPosition;
+  // Tronque le texte pour qu'il tienne dans la largeur max sans retour à la ligne
+  private truncateText(
+    text: string,
+    maxWidth: number,
+    fontSize = 10,
+    fontStyle = "normal",
+  ) {
+    this.pdf.setFont("helvetica", fontStyle);
+    this.pdf.setFontSize(fontSize);
+    let truncated = text;
+    while (
+      this.pdf.getTextWidth(truncated) > maxWidth &&
+      truncated.length > 0
+    ) {
+      truncated = truncated.slice(0, -1);
+    }
+    if (truncated.length < text.length) {
+      truncated = truncated.slice(0, -1) + "…";
+    }
+    return truncated;
+  }
 
-    // En-tête du tableau
-    this.pdf.setFont("helvetica", "bold");
-    this.pdf.setFontSize(10);
-    let x = startX;
-    headers.forEach((header, i) => {
-      this.pdf.text(header, x, y);
-      x += colWidths[i];
-    });
-    y += this.lineHeight;
-    // Ligne supprimée ici (pas de ligne horizontale sous l'en-tête)
-    y += 2;
+  // Affiche les produits dans un vrai tableau PDF sans colonne Statut,
+  // répartit la largeur sur 5 colonnes et redessine l'en-tête à chaque page.
+  private addProductTable(products: ProductReportItem[]) {
+    // Largeurs dynamiques pour 5 colonnes (Produit, Catégorie, Achat, Vente, Stock)
+    const tableWidth = this.pageWidth - 2 * this.margin;
+    const colPercents = [0.32, 0.24, 0.15, 0.15, 0.14]; // total = 1
+    const colWidths = colPercents.map((p) => Math.floor(tableWidth * p));
+    const headers = ["Produit", "Catégorie", "Achat", "Vente", "Stock"];
+    const startX = this.margin;
+
+    // Fonction pour dessiner l'en-tête du tableau
+    const drawHeader = (y: number) => {
+      this.pdf.setFont("helvetica", "bold");
+      this.pdf.setFontSize(10);
+      let x = startX;
+      headers.forEach((header, i) => {
+        this.pdf.text(header, x, y);
+        x += colWidths[i];
+      });
+      y += this.lineHeight;
+      return y + 2;
+    };
+
+    let y = this.yPosition;
+    y = drawHeader(y);
 
     // Lignes du tableau
     this.pdf.setFont("helvetica", "normal");
-    products.forEach((product) => {
-      this.checkPageBreak();
-      x = startX;
-      // Produit
-      this.pdf.text(String(product.name).slice(0, 25), x, y);
-      x += colWidths[0];
-      // Catégorie
-      this.pdf.text(String(product.category_name).slice(0, 18), x, y);
-      x += colWidths[1];
-      // Achat
-      this.pdf.text(this.formatPrice(product.purchase_price), x, y, {
-        maxWidth: colWidths[2] - 2,
-      });
-      x += colWidths[2];
-      // Vente
-      this.pdf.text(this.formatPrice(product.sale_price), x, y, {
-        maxWidth: colWidths[3] - 2,
-      });
-      x += colWidths[3];
-      // Stock
-      this.pdf.text(String(product.quantity), x, y, {
-        maxWidth: colWidths[4] - 2,
-      });
-      x += colWidths[4];
-      // Statut
-      this.pdf.text(product.is_active ? "Actif" : "Inactif", x, y, {
-        maxWidth: colWidths[5] - 2,
-      });
-      y += this.lineHeight;
-      this.yPosition = y;
-      this.checkPageBreak();
+    products.forEach((product, idx) => {
+      // Découper le nom et la catégorie en lignes multiples si besoin
+      const prodLines = this.pdf.splitTextToSize(
+        String(product.name),
+        colWidths[0] - 2,
+      );
+      const catLines = this.pdf.splitTextToSize(
+        String(product.category_name),
+        colWidths[1] - 2,
+      );
+      const maxLines = Math.max(prodLines.length, catLines.length, 1);
+
+      // Saut de page si besoin (en gardant 2 lignes de marge)
+      if (y + maxLines * this.lineHeight > this.pageHeight - 30) {
+        this.pdf.addPage();
+        y = 20;
+        y = drawHeader(y);
+      }
+
+      for (let i = 0; i < maxLines; i++) {
+        let x = startX;
+        // Produit (ligne i)
+        this.pdf.text(prodLines[i] || "", x, y);
+        x += colWidths[0];
+        // Catégorie (ligne i)
+        this.pdf.text(catLines[i] || "", x, y);
+        x += colWidths[1];
+        // Les autres colonnes seulement sur la première ligne
+        if (i === 0) {
+          this.pdf.text(this.formatPrice(product.purchase_price), x, y, {
+            maxWidth: colWidths[2] - 2,
+          });
+          x += colWidths[2];
+          this.pdf.text(this.formatPrice(product.sale_price), x, y, {
+            maxWidth: colWidths[3] - 2,
+          });
+          x += colWidths[3];
+          this.pdf.text(String(product.quantity), x, y, {
+            maxWidth: colWidths[4] - 2,
+          });
+        }
+        y += this.lineHeight;
+      }
     });
 
     this.yPosition = y + 5;
