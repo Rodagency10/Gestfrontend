@@ -3,7 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CashierLayout from "../../../components/cashier/CashierLayout";
-import useGames, { GameWithPricing, GamePricing } from "../../hooks/useGames";
+import useCashierGamesGet, {
+  CashierGame as GameWithPricing,
+  CashierGamePricing as GamePricing,
+} from "../../hooks/useCashierGamesGet";
 import useGameSessions from "../../hooks/useGameSessions";
 import {
   PlayIcon,
@@ -23,7 +26,7 @@ const CashierGamesPage = () => {
     loading: gamesLoading,
     error: gamesError,
     getGames,
-  } = useGames();
+  } = useCashierGamesGet();
   const {
     createSession,
     loading: sessionLoading,
