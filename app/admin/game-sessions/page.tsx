@@ -38,8 +38,12 @@ type GameSession = {
   cashier_username?: string;
 };
 
-const formatCurrency = (amount: number) =>
-  `${amount.toLocaleString("fr-FR")} FCFA`;
+const formatCurrency = (amount: number) => {
+  if (isNaN(amount) || amount === null || amount === undefined) {
+    return "0 FCFA";
+  }
+  return `${amount.toLocaleString("fr-FR")} FCFA`;
+};
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -189,8 +193,14 @@ const AdminGameSessionsPage = () => {
     // Calcul des statistiques
     const stats = {
       totalSessions: filtered.length,
-      totalRevenue: filtered.reduce((sum, s) => sum + s.total_price, 0),
-      totalPlayers: filtered.reduce((sum, s) => sum + s.player_count, 0),
+      totalRevenue: filtered.reduce(
+        (sum, s) => sum + (parseFloat(s.total_price?.toString()) || 0),
+        0,
+      ),
+      totalPlayers: filtered.reduce(
+        (sum, s) => sum + (parseInt(s.player_count?.toString()) || 0),
+        0,
+      ),
       averageSessionAmount: 0,
       sessionsByGame: {} as Record<string, number>,
       sessionsByCashier: {} as Record<string, number>,
@@ -661,96 +671,104 @@ const AdminGameSessionsPage = () => {
         {/* Modal de détails */}
         {showDetailModal && selectedSession && (
           <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/40">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-8">
-              <div className="mt-3">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Détails de la session
-                  </h3>
-                  <button
-                    onClick={() => setShowDetailModal(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <XMarkIcon className="w-6 h-6" />
-                  </button>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl p-8">
+              <div className="mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Détails de la session #
+                  {selectedSession.session_id.slice(0, 8)}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {formatDate(selectedSession.created_at)} - Caissier:{" "}
+                  {selectedSession.cashier_username}
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <h4 className="text-md font-semibold text-gray-800 mb-3">
+                  Détails de la session
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Jeu
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Modalité
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Mode
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Joueurs
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      <tr>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {selectedSession.game_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {selectedSession.pricing_description}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {selectedSession.mode}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {selectedSession.player_count}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right text-gray-900">
+                          {formatCurrency(selectedSession.total_price)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <span className="font-medium text-gray-700">
-                      Session ID:
-                    </span>
-                    <span className="ml-2 font-mono text-gray-600">
-                      {selectedSession.session_id}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Jeu:</span>
-                    <span className="ml-2 text-gray-600">
-                      {selectedSession.game_name}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Modalité:</span>
-                    <span className="ml-2 text-gray-600">
-                      {selectedSession.pricing_description}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Mode:</span>
-                    <span className="ml-2 text-gray-600">
-                      {selectedSession.mode}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Joueurs:</span>
-                    <span className="ml-2 text-gray-600">
-                      {selectedSession.player_count}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">
-                      Prix total:
-                    </span>
-                    <span className="ml-2 text-gray-600 font-semibold">
-                      {formatCurrency(selectedSession.total_price)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Caissier:</span>
-                    <span className="ml-2 text-gray-600">
-                      {selectedSession.cashier_username}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Date:</span>
-                    <span className="ml-2 text-gray-600">
-                      {formatDate(selectedSession.created_at)}
-                    </span>
-                  </div>
-                  {selectedSession.notes && (
-                    <div>
-                      <span className="font-medium text-gray-700">Notes:</span>
-                      <span className="ml-2 text-gray-600">
-                        {selectedSession.notes}
-                      </span>
-                    </div>
-                  )}
+              </div>
+
+              {selectedSession.notes && (
+                <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+                  <h5 className="text-sm font-medium text-gray-900 mb-2">
+                    Notes:
+                  </h5>
+                  <p className="text-sm text-gray-600">
+                    {selectedSession.notes}
+                  </p>
                 </div>
-                <div className="mt-6 flex space-x-3">
-                  <button
-                    onClick={() => handlePrint(selectedSession)}
-                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center space-x-2"
-                  >
-                    <PrinterIcon className="w-4 h-4" />
-                    <span>Imprimer reçu</span>
-                  </button>
-                  <button
-                    onClick={() => setShowDetailModal(false)}
-                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
-                  >
-                    Fermer
-                  </button>
+              )}
+
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-semibold text-gray-900">
+                    Total de la session:
+                  </span>
+                  <span className="text-xl font-bold text-green-600">
+                    {formatCurrency(selectedSession.total_price)}
+                  </span>
                 </div>
+              </div>
+
+              <div className="mt-6 flex space-x-3">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                >
+                  Fermer
+                </button>
+                <button
+                  onClick={() => handlePrint(selectedSession)}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center space-x-2"
+                >
+                  <PrinterIcon className="w-4 h-4" />
+                  <span>Imprimer Reçu</span>
+                </button>
               </div>
             </div>
           </div>
