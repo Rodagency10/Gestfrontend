@@ -27,6 +27,16 @@ const GamesPage = () => {
     deleteGamePricing,
   } = useGames();
 
+  // Affichage de l'erreur en haut de la page
+
+  // Affichage de l'erreur globale (pricing, jeu, etc.)
+  // À placer dans le JSX du composant, par exemple juste après l'ouverture du return :
+  // {error && (
+  //   <div style={{ color: "red", margin: "16px 0", fontWeight: "bold" }}>
+  //     Erreur: {error}
+  //   </div>
+  // )}
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showGameModal, setShowGameModal] = useState(false);
@@ -124,6 +134,9 @@ const GamesPage = () => {
 
   const handlePricingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("🚀 handlePricingSubmit déclenchée");
+    console.log("📝 selectedGameForPricing:", selectedGameForPricing);
+    console.log("📝 pricingFormData:", pricingFormData);
 
     try {
       const data = {
@@ -133,18 +146,29 @@ const GamesPage = () => {
           : undefined,
         price_per_person: parseFloat(pricingFormData.price_per_person),
         description: pricingFormData.description.trim(),
+        game_id: selectedGameForPricing?.game_id, // Ajout explicite du game_id dans le body
       };
 
+      console.log("📦 Data à envoyer:", data);
+
       if (editingPricing) {
+        console.log("✏️ Mode édition - updateGamePricing");
         await updateGamePricing(editingPricing.pricing_id, data);
       } else if (selectedGameForPricing) {
+        console.log(
+          "➕ Mode ajout - addGamePricing pour game_id:",
+          selectedGameForPricing.game_id,
+        );
         await addGamePricing(selectedGameForPricing.game_id, data);
+      } else {
+        console.error("❌ Aucun jeu sélectionné !");
       }
 
       resetPricingForm();
+      setSelectedGameForPricing(null);
       setShowPricingModal(false);
     } catch (error) {
-      console.error("Erreur lors de la soumission:", error);
+      console.error("❌ Erreur lors de la soumission:", error);
     }
   };
 
@@ -204,7 +228,6 @@ const GamesPage = () => {
       description: "",
     });
     setEditingPricing(null);
-    setSelectedGameForPricing(null);
   };
 
   const openAddGameModal = () => {

@@ -15,6 +15,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   PlayIcon,
+  ClockIcon,
 } from "@heroicons/react/24/outline";
 import AuthWrapper from "../auth/AuthWrapper";
 import { authService } from "../../utils/authService";
@@ -47,7 +48,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     },
 
     { name: "Gestion Ventes", href: "/admin/sales", icon: CurrencyDollarIcon },
-    { name: "Gestion Jeux", href: "/admin/games", icon: PlayIcon },
     { name: "Gestion Utilisateurs", href: "/admin/users", icon: UsersIcon },
     {
       name: "Catégories Dépenses",
@@ -58,6 +58,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       name: "Gestion Dépenses",
       href: "/admin/expenses",
       icon: CurrencyDollarIcon,
+    },
+    { name: "Gestion Jeux", href: "/admin/games", icon: PlayIcon },
+    {
+      name: "Vente Sessions de Jeu",
+      href: "/admin/game-sessions",
+      icon: ClockIcon,
     },
   ];
 

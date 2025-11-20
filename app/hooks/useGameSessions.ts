@@ -16,7 +16,7 @@ export interface GameSession {
   // Relations
   game_name?: string;
   pricing_description?: string;
-  cashier_name?: string;
+  cashier_username?: string;
 }
 
 interface GameSessionsResponse {
@@ -39,14 +39,24 @@ interface UseGameSessionsResult {
     start_date?: string;
     end_date?: string;
   }) => Promise<void>;
+  getSessionsForCashier: (filters?: {
+    game_id?: string;
+    cashier_id?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+  }) => Promise<void>;
   getSessionById: (sessionId: string) => Promise<void>;
   createSession: (data: {
     game_id: string;
     pricing_id: string;
     player_count: number;
     notes?: string;
-  }) => Promise<void>;
-  updateSession: (sessionId: string, data: Partial<GameSession>) => Promise<void>;
+  }) => Promise<GameSession | undefined>;
+  updateSession: (
+    sessionId: string,
+    data: Partial<GameSession>,
+  ) => Promise<void>;
   endSession: (sessionId: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
 }
@@ -56,7 +66,9 @@ const BACKEND_URL =
 
 function getAuthHeaders() {
   const token =
-    typeof window !== "undefined" ? localStorage.getItem("admin_token") || localStorage.getItem("cashier_token") : null;
+    typeof window !== "undefined"
+      ? localStorage.getItem("cashier_token")
+      : null;
   return {
     "Content-Type": "application/json",
     ...(token && { Authorization: `Bearer ${token}` }),
@@ -87,7 +99,8 @@ const useGameSessions = (): UseGameSessionsResult => {
         });
       }
 
-      const url = `${BACKEND_URL}/games/sessions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      // Endpoint général pour toutes les sessions (admin)
+      const url = `${BACKEND_URL}/games/sessions${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
       const res = await fetch(url, {
         method: "GET",
         headers: getAuthHeaders(),
@@ -100,6 +113,42 @@ const useGameSessions = (): UseGameSessionsResult => {
         err instanceof Error
           ? err.message
           : "Erreur lors de la récupération des sessions",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sessions du caissier connecté uniquement
+  const getSessionsForCashier = async (filters?: {
+    game_id?: string;
+    cashier_id?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const queryParams = new URLSearchParams();
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) queryParams.append(key, value);
+        });
+      }
+      const url = `${BACKEND_URL}/games/sessions/cashier${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error(`Erreur ${res.status}: ${res.statusText}`);
+      const data: GameSessionsResponse = await res.json();
+      setSessions(data.sessions);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de la récupération des sessions du caissier",
       );
     } finally {
       setLoading(false);
@@ -135,7 +184,7 @@ const useGameSessions = (): UseGameSessionsResult => {
     pricing_id: string;
     player_count: number;
     notes?: string;
-  }) => {
+  }): Promise<GameSession | undefined> => {
     setLoading(true);
     setError(null);
     try {
@@ -145,7 +194,9 @@ const useGameSessions = (): UseGameSessionsResult => {
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error(`Erreur ${res.status}: ${res.statusText}`);
+      const responseData: GameSessionResponse = await res.json();
       await getSessions(); // Refresh list
+      return responseData.session;
     } catch (err) {
       setError(
         err instanceof Error
@@ -159,7 +210,10 @@ const useGameSessions = (): UseGameSessionsResult => {
   };
 
   // 4. Modifier une session
-  const updateSession = async (sessionId: string, data: Partial<GameSession>) => {
+  const updateSession = async (
+    sessionId: string,
+    data: Partial<GameSession>,
+  ) => {
     setLoading(true);
     setError(null);
     try {
@@ -187,10 +241,13 @@ const useGameSessions = (): UseGameSessionsResult => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${BACKEND_URL}/games/sessions/${sessionId}/end`, {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch(
+        `${BACKEND_URL}/games/sessions/${sessionId}/end`,
+        {
+          method: "PATCH",
+          headers: getAuthHeaders(),
+        },
+      );
       if (!res.ok) throw new Error(`Erreur ${res.status}: ${res.statusText}`);
       await getSessions(); // Refresh list
     } catch (err) {
@@ -234,6 +291,7 @@ const useGameSessions = (): UseGameSessionsResult => {
     loading,
     error,
     getSessions,
+    getSessionsForCashier,
     getSessionById,
     createSession,
     updateSession,

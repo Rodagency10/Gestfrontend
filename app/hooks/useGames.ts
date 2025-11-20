@@ -48,6 +48,8 @@ interface UseGamesResult {
     data: Partial<GamePricing>,
   ) => Promise<void>;
   deleteGamePricing: (pricingId: string) => Promise<void>;
+  // Ajout pour debug UI
+  debugError?: string | null;
 }
 
 const BACKEND_URL =
@@ -192,8 +194,13 @@ const useGames = (): UseGamesResult => {
   };
 
   // 6. Ajouter une modalité/prix à un jeu
-  // POST /games/games/:gameId/pricing
+  // POST /admin/games/:gameId/pricing
   const addGamePricing = async (gameId: string, data: Partial<GamePricing>) => {
+    console.log("🎮 addGamePricing called with gameId:", gameId);
+    console.log("📊 API_PREFIX:", API_PREFIX);
+    console.log("🔗 URL finale:", `${API_PREFIX}/${gameId}/pricing`);
+    console.log("📝 Data:", data);
+
     setLoading(true);
     setError(null);
     try {
@@ -202,9 +209,17 @@ const useGames = (): UseGamesResult => {
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(`Erreur ${res.status}: ${res.statusText}`);
+      console.log("📡 Response status:", res.status);
+      const responseText = await res.text();
+      console.log("📡 Response body:", responseText);
+      if (!res.ok)
+        throw new Error(
+          `Erreur ${res.status}: ${res.statusText} - ${responseText}`,
+        );
+      console.log("✅ Modalité ajoutée avec succès");
       await getGames(); // Refresh list
     } catch (err) {
+      console.error("❌ Erreur dans addGamePricing:", err);
       setError(
         err instanceof Error
           ? err.message
@@ -225,11 +240,14 @@ const useGames = (): UseGamesResult => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_PREFIX}/pricing/${pricingId}`, {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
+      const res = await fetch(
+        `${BACKEND_URL}/games/admin/pricing/${pricingId}`,
+        {
+          method: "PUT",
+          headers: getAuthHeaders(),
+          body: JSON.stringify(data),
+        },
+      );
       if (!res.ok) throw new Error(`Erreur ${res.status}: ${res.statusText}`);
       await getGames(); // Refresh list
     } catch (err) {
@@ -250,10 +268,13 @@ const useGames = (): UseGamesResult => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_PREFIX}/pricing/${pricingId}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch(
+        `${BACKEND_URL}/games/admin/pricing/${pricingId}`,
+        {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        },
+      );
       if (!res.ok) throw new Error(`Erreur ${res.status}: ${res.statusText}`);
       await getGames(); // Refresh list
     } catch (err) {
@@ -281,6 +302,7 @@ const useGames = (): UseGamesResult => {
     addGamePricing,
     updateGamePricing,
     deleteGamePricing,
+    debugError: error, // Pour affichage direct dans la page si besoin
   };
 };
 
