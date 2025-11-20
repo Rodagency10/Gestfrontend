@@ -195,7 +195,6 @@ const useGameSessions = (): UseGameSessionsResult => {
       });
       if (!res.ok) throw new Error(`Erreur ${res.status}: ${res.statusText}`);
       const responseData: GameSessionResponse = await res.json();
-      await getSessions(); // Refresh list
       return responseData.session;
     } catch (err) {
       setError(
