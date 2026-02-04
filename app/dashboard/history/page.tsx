@@ -67,6 +67,15 @@ const HistoryPage = () => {
     return statusMatch && searchMatch && dateMatch;
   });
 
+  // Calcul du total des ventes du jour
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const todayRevenue = sales
+    .filter(
+      (sale) => new Date(sale.date).toISOString().slice(0, 10) === todayStr,
+    )
+    .reduce((sum, sale) => sum + parseFloat(sale.total_amount), 0);
+
   const totalRevenue = filteredData.reduce(
     (sum, sale) => sum + parseFloat(sale.total_amount),
     0,
@@ -109,7 +118,7 @@ const HistoryPage = () => {
                     Total des ventes
                   </p>
                   <p className="text-lg font-bold text-blue-900">
-                    {totalRevenue.toFixed(2)} FCFA
+                    {todayRevenue.toFixed(2)} FCFA
                   </p>
                 </div>
                 <div className="bg-green-50 px-4 py-2 rounded-lg">
